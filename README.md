@@ -21,6 +21,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # build classique dans dist/
 npm run build:single # un seul fichier dist-single/index.html, autonome
+node scripts/artifact.mjs # page de démo publiable comme Artifact claude.ai
 ```
 
 ## Organisation

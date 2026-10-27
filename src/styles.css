@@ -1277,3 +1277,13 @@ button.block {
 .cg-dose .chip {
   margin-left: 0;
 }
+
+button.armed {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.shell-bar {
+  top: env(safe-area-inset-top, 0px);
+}

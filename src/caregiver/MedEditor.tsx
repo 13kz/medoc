@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { FORMS } from '../lib/schedule'
 import type { MedForm, Medication } from '../lib/types'
 
@@ -180,13 +181,9 @@ export function MedEditor({
         </label>
 
         {med && (
-          <button
-            type="button"
-            className="ghost danger block"
-            onClick={() => confirm(`Supprimer ${med.name} de l’ordonnance ?`) && onDelete(med.id)}
-          >
+          <ConfirmButton className="ghost danger block" confirmLabel="Toucher à nouveau pour supprimer" onConfirm={() => onDelete(med.id)}>
             Supprimer de l’ordonnance
-          </button>
+          </ConfirmButton>
         )}
       </form>
     </div>

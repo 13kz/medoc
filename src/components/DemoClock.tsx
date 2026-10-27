@@ -1,3 +1,4 @@
+import { ConfirmButton } from './ConfirmButton'
 import { useNow } from '../lib/clock'
 import { formatTime } from '../lib/schedule'
 import { offsetTo } from '../lib/seed'
@@ -54,16 +55,13 @@ export function DemoClock() {
           Heure réelle
         </button>
       </div>
-      <button
+      <ConfirmButton
         className="ghost danger small-btn"
-        onClick={() => {
-          if (confirm('Effacer les prises, alertes et modifications, et revenir à l’ordonnance d’exemple ?')) {
-            dispatch({ type: 'reset' })
-          }
-        }}
+        confirmLabel="Tout effacer ? Toucher pour confirmer"
+        onConfirm={() => dispatch({ type: 'reset' })}
       >
         Recommencer la démo
-      </button>
+      </ConfirmButton>
     </section>
   )
 }
