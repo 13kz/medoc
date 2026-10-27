@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { ConfirmButton } from '../components/ConfirmButton'
+import { Icon } from '../components/Icon'
+import { Pill } from '../components/Pill'
 import { FORMS } from '../lib/schedule'
 import type { MedForm, Medication } from '../lib/types'
 
@@ -69,6 +71,7 @@ export function MedEditor({
             Annuler
           </button>
           <strong>{med ? 'Modifier' : 'Nouveau médicament'}</strong>
+          <span className="sheet-grip" aria-hidden="true" />
           <button type="submit" className="primary" disabled={!valid}>
             Enregistrer
           </button>
@@ -94,7 +97,8 @@ export function MedEditor({
                 aria-pressed={draft.form === f.id}
                 onClick={() => set({ form: f.id, dose: draft.dose === DOSE_HINT[draft.form] ? DOSE_HINT[f.id] : draft.dose })}
               >
-                {f.icon} {f.label}
+                <Pill med={{ ...draft, form: f.id }} size="xs" />
+                {f.label}
               </button>
             ))}
           </div>
@@ -132,7 +136,7 @@ export function MedEditor({
                   onChange={(e) => e.target.value && set({ times: times.map((x) => (x === t ? e.target.value : x)) })}
                 />
                 <button type="button" className="ghost" aria-label={`Retirer ${t}`} onClick={() => set({ times: times.filter((x) => x !== t) })}>
-                  ✕
+                  <Icon name="close" size={18} />
                 </button>
               </li>
             ))}
@@ -145,7 +149,8 @@ export function MedEditor({
               set({ times: [...times, free] })
             }}
           >
-            + Autre heure
+            <Icon name="plus" size={18} />
+            Autre heure
           </button>
         </fieldset>
 

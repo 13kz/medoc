@@ -1,3 +1,4 @@
+import type { IconName } from '../components/Icon'
 import type { AppState, Dose, MedForm } from './types'
 
 export const pad = (n: number) => String(n).padStart(2, '0')
@@ -39,12 +40,12 @@ export function formatDuration(ms: number): string {
 
 export type Moment = 'matin' | 'midi' | 'apres-midi' | 'soir' | 'nuit'
 
-export const MOMENTS: { id: Moment; label: string; icon: string }[] = [
-  { id: 'matin', label: 'Matin', icon: '🌅' },
-  { id: 'midi', label: 'Midi', icon: '☀️' },
-  { id: 'apres-midi', label: 'Après-midi', icon: '🌤️' },
-  { id: 'soir', label: 'Soir', icon: '🌇' },
-  { id: 'nuit', label: 'Coucher', icon: '🌙' },
+export const MOMENTS: { id: Moment; label: string; icon: IconName }[] = [
+  { id: 'matin', label: 'Matin', icon: 'sunrise' },
+  { id: 'midi', label: 'Midi', icon: 'sun' },
+  { id: 'apres-midi', label: 'Après-midi', icon: 'sun' },
+  { id: 'soir', label: 'Soir', icon: 'sunset' },
+  { id: 'nuit', label: 'Coucher', icon: 'moon' },
 ]
 
 export function momentOf(hhmm: string): Moment {
@@ -56,16 +57,14 @@ export function momentOf(hhmm: string): Moment {
   return 'nuit'
 }
 
-export const FORMS: { id: MedForm; label: string; icon: string }[] = [
-  { id: 'comprime', label: 'Comprimé', icon: '💊' },
-  { id: 'gelule', label: 'Gélule', icon: '💊' },
-  { id: 'sachet', label: 'Sachet', icon: '🥄' },
-  { id: 'injection', label: 'Injection', icon: '💉' },
-  { id: 'gouttes', label: 'Gouttes', icon: '💧' },
-  { id: 'autre', label: 'Autre', icon: '🩺' },
+export const FORMS: { id: MedForm; label: string }[] = [
+  { id: 'comprime', label: 'Comprimé' },
+  { id: 'gelule', label: 'Gélule' },
+  { id: 'sachet', label: 'Sachet' },
+  { id: 'injection', label: 'Injection' },
+  { id: 'gouttes', label: 'Gouttes' },
+  { id: 'autre', label: 'Autre' },
 ]
-
-export const formIcon = (form: MedForm) => FORMS.find((f) => f.id === form)?.icon ?? '💊'
 
 /** Toutes les prises du jour, triées par heure, avec leur statut à l'instant `now`. */
 export function dosesForDay(state: AppState, now: number): Dose[] {

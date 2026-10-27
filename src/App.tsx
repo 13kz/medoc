@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CaregiverApp } from './caregiver/CaregiverApp'
 import { DemoClock } from './components/DemoClock'
 import { DeviceFrame } from './components/DeviceFrame'
+import { Icon } from './components/Icon'
 import { useNow } from './lib/clock'
 import { dosesForDay, spokenTime } from './lib/schedule'
 import { StoreProvider, useStore } from './lib/store'
@@ -65,20 +66,31 @@ function Shell() {
       <AlertEngine />
       <header className="shell-bar">
         <div className="shell-brand">
-          <span className="shell-logo" aria-hidden>
-            💊
+          <span className="shell-logo" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="32" height="32">
+              <g transform="rotate(-40 16 16)">
+                <path d="M16 9h-5a7 7 0 000 14h5z" fill="currentColor" />
+                <path d="M16 9h5a7 7 0 010 14h-5z" fill="none" stroke="currentColor" strokeWidth="2.2" />
+              </g>
+            </svg>
           </span>
           <div>
             <strong>Medoc</strong>
-            <span className="shell-sub">Prototype</span>
+            <span className="shell-sub">Prototype · deux téléphones</span>
           </div>
         </div>
         <nav className="switcher" aria-label="Choisir le téléphone">
           <button aria-pressed={view === 'patient'} onClick={() => setView('patient')}>
-            <span aria-hidden>👵</span> Téléphone de {state.patient.name}
+            <Icon name="phone" size={18} />
+            <span>
+              <span className="sw-long">Téléphone de </span>
+              {state.patient.name}
+            </span>
           </button>
           <button aria-pressed={view === 'aidant'} onClick={() => setView('aidant')}>
-            <span aria-hidden>🧑</span> Téléphone de l’aidant
+            <Icon name="user" size={18} />
+            <span className="sw-long">Téléphone de l’aidant</span>
+            <span className="sw-short">Aidant</span>
             {unread > 0 && <span className="badge">{unread}</span>}
           </button>
           <button className="only-wide" aria-pressed={view === 'both'} onClick={() => setView('both')}>
@@ -86,7 +98,8 @@ function Shell() {
           </button>
         </nav>
         <button className="clock-toggle only-narrow" onClick={() => setClockOpen((o) => !o)} aria-expanded={clockOpen}>
-          ⏱ Démo
+          <Icon name="snooze" size={18} />
+          Horloge
         </button>
       </header>
 

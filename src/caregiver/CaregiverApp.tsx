@@ -1,22 +1,36 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { useNow } from '../lib/clock'
-import { vibrate, systemNotify } from '../lib/platform'
-import { dosesForDay, formatTime, spokenTime } from '../lib/schedule'
+import { systemNotify, vibrate } from '../lib/platform'
+import { MOMENTS, dosesForDay, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
-import type { Medication } from '../lib/types'
+import type { DisplayMode, DoseStatus, Medication } from '../lib/types'
 import { MedEditor } from './MedEditor'
 import { SettingsTab } from './SettingsTab'
 
 type Tab = 'jour' | 'ordonnance' | 'alertes' | 'reglages'
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<DoseStatus, string> = {
   pris: 'Pris',
   'a-venir': 'À venir',
   'a-prendre': 'À prendre',
   reporte: 'Reporté',
   'en-retard': 'En retard',
 }
+
+const MODE_LABEL: Record<DisplayMode, string> = {
+  voix: 'Voix d’abord',
+  malvoyant: 'Gros caractères',
+  standard: 'Affichage standard',
+}
+
+const TABS: [Tab, IconName, string][] = [
+  ['jour', 'list', 'Aujourd’hui'],
+  ['ordonnance', 'box', 'Ordonnance'],
+  ['alertes', 'bell', 'Alertes'],
+  ['reglages', 'settings', 'Réglages'],
+]
 
 export function CaregiverApp() {
   const { state, dispatch } = useStore()
@@ -29,6 +43,9 @@ export function CaregiverApp() {
   const doses = dosesForDay(state, now)
   const unread = state.alerts.filter((a) => !a.read).length
   const done = doses.filter((d) => d.status === 'pris').length
+  const late = doses.filter((d) => d.status === 'en-retard')
+  const next = nextUpcoming(doses)
+  const activeMeds = state.medications.filter((m) => m.active).length
 
   // Bandeau façon notification push quand une nouvelle alerte arrive.
   useEffect(() => {
@@ -49,91 +66,156 @@ export function CaregiverApp() {
   return (
     <div className="cg">
       {banner && (
-        <button className="cg-banner" role="alert" onClick={() => { setBanner(null); setTab('alertes') }}>
-          <span className="cg-banner-app">⚠️ Medoc · maintenant</span>
-          <span>{banner}</span>
+        <button
+          className="cg-banner"
+          role="alert"
+          onClick={() => {
+            setBanner(null)
+            setTab('alertes')
+          }}
+        >
+          <span className="cg-banner-icon">
+            <Icon name="alert" size={18} stroke={2.4} />
+          </span>
+          <span className="cg-banner-text">
+            <span className="cg-banner-app">Medoc · maintenant</span>
+            <span>{banner}</span>
+          </span>
         </button>
       )}
 
       <header className="cg-head">
-        <p className="cg-kicker">Suivi de</p>
-        <h1>{state.patient.name}</h1>
+        <span className="cg-avatar" aria-hidden="true">
+          {state.patient.name.trim().charAt(0).toUpperCase() || '?'}
+        </span>
+        <div className="cg-head-text">
+          <h1>{state.patient.name}</h1>
+          <p>
+            {MODE_LABEL[state.patient.displayMode]} · {activeMeds} médicament{activeMeds > 1 ? 's' : ''}
+          </p>
+        </div>
+        <button className="cg-bell" aria-label={`Alertes${unread ? `, ${unread} non lue${unread > 1 ? 's' : ''}` : ''}`} onClick={() => setTab('alertes')}>
+          <Icon name="bell" size={22} />
+          {unread > 0 && <span className="badge">{unread}</span>}
+        </button>
       </header>
 
       <div className="cg-content">
         {tab === 'jour' && (
-          <section aria-label="Aujourd’hui">
-            <div className="cg-summary">
+          <section aria-label="Aujourd’hui" className="cg-stack">
+            <div className="cg-hero">
               <div className="cg-ring" style={{ '--p': doses.length ? done / doses.length : 0 } as CSSProperties}>
                 <span>
-                  {done}/{doses.length}
+                  <strong>{done}</strong>/{doses.length}
                 </span>
               </div>
-              <div>
-                <p className="cg-summary-title">prises faites aujourd’hui</p>
-                <p className="muted">
-                  {doses.some((d) => d.status === 'en-retard')
-                    ? `${doses.filter((d) => d.status === 'en-retard').length} en retard`
-                    : 'Rien en retard'}
+              <div className="cg-hero-text">
+                <p className="cg-hero-title">{done === doses.length && doses.length > 0 ? 'Tout est pris' : 'prises faites aujourd’hui'}</p>
+                <p>
+                  {next
+                    ? `Prochaine : ${spokenTime(next.time)}, ${next.med.name} (dans ${formatDuration(next.at - now)})`
+                    : 'Plus rien de prévu aujourd’hui'}
                 </p>
               </div>
             </div>
-            <ul className="cg-list">
-              {doses.map((d) => (
-                <li key={d.key} className={`cg-dose st-${d.status}`}>
-                  <span className="cg-time">{d.time}</span>
-                  <Pill med={d.med} />
-                  <span className="cg-dose-text">
-                    <strong>{d.med.name}</strong>
-                    <span className="muted">
-                      {d.med.dose}
-                      {d.intake &&
-                        ` · ${d.intake.by === 'patient' ? 'confirmé' : 'noté par vous'} à ${formatTime(Date.parse(d.intake.takenAt))}`}
-                      {d.status === 'reporte' && d.snoozedUntil && ` · rappel à ${formatTime(d.snoozedUntil)}`}
-                    </span>
-                  </span>
-                  <span className="cg-dose-side">
-                  <span className={`chip st-${d.status}`}>{STATUS_LABEL[d.status]}</span>
-                  {d.status === 'pris' ? (
-                    <button className="ghost small-btn" onClick={() => dispatch({ type: 'untake', doseKey: d.key })}>
-                      Annuler
-                    </button>
-                  ) : (
-                    <button
-                      className="ghost small-btn"
-                      title="Par exemple si elle vous l’a confirmé au téléphone"
-                      onClick={() => dispatch({ type: 'take', doseKey: d.key, by: 'aidant', at: now })}
-                    >
-                      Marquer pris
-                    </button>
-                  )}
-                  </span>
-                </li>
-              ))}
-              {doses.length === 0 && <li className="muted">Aucune prise prévue. Ajoutez des médicaments dans l’ordonnance.</li>}
-            </ul>
+
+            {late.length > 0 && (
+              <div className="cg-notice" role="status">
+                <Icon name="alert" size={22} stroke={2.2} />
+                <p>
+                  <strong>
+                    {late.length} prise{late.length > 1 ? 's' : ''} en retard.
+                  </strong>{' '}
+                  {state.patient.name} a reçu un rappel. Si la prise vous est confirmée par téléphone, validez-la ci-dessous.
+                </p>
+              </div>
+            )}
+
+            {MOMENTS.map((m) => {
+              const items = doses.filter((d) => momentOf(d.time) === m.id)
+              if (items.length === 0) return null
+              return (
+                <div key={m.id} className="cg-moment">
+                  <h2>
+                    <Icon name={m.icon} size={18} />
+                    {m.label}
+                  </h2>
+                  <ul className="cg-list">
+                    {items.map((d) => (
+                      <li key={d.key} className={`cg-dose st-${d.status}`}>
+                        <span className="cg-time">{d.time}</span>
+                        <Pill med={d.med} size="sm" />
+                        <span className="cg-dose-text">
+                          <strong>{d.med.name}</strong>
+                          <span className="cg-meta">
+                            {d.med.dose}
+                            {d.intake && ` · ${d.intake.by === 'patient' ? 'confirmé' : 'validé par vous'} à ${formatTime(Date.parse(d.intake.takenAt))}`}
+                            {d.status === 'reporte' && d.snoozedUntil && ` · rappel à ${formatTime(d.snoozedUntil)}`}
+                          </span>
+                          <span className={`chip st-${d.status}`}>{STATUS_LABEL[d.status]}</span>
+                        </span>
+                        {d.status === 'pris' ? (
+                          <button
+                            className="cg-act done"
+                            aria-label={`Annuler la prise de ${d.med.name}`}
+                            title="Annuler"
+                            onClick={() => dispatch({ type: 'untake', doseKey: d.key })}
+                          >
+                            <Icon name="check" size={20} stroke={3} />
+                          </button>
+                        ) : (
+                          <button
+                            className="cg-act"
+                            aria-label={`Valider la prise de ${d.med.name}`}
+                            title="Valider la prise"
+                            onClick={() => dispatch({ type: 'take', doseKey: d.key, by: 'aidant', at: now })}
+                          >
+                            <Icon name="check" size={20} stroke={2.4} />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+            {doses.length === 0 && <p className="cg-empty">Aucune prise prévue. Ajoutez des médicaments dans l’ordonnance.</p>}
           </section>
         )}
 
         {tab === 'ordonnance' && (
-          <section aria-label="Ordonnance">
-            <button className="primary block" onClick={() => setEditing('new')}>
-              + Ajouter un médicament
-            </button>
+          <section aria-label="Ordonnance" className="cg-stack">
+            <div className="cg-section-head">
+              <h2>Ordonnance</h2>
+              <button className="primary" onClick={() => setEditing('new')}>
+                <Icon name="plus" size={18} stroke={2.6} />
+                Ajouter
+              </button>
+            </div>
             <ul className="cg-list">
               {state.medications.map((m) => (
                 <li key={m.id} className={`cg-med ${m.active ? '' : 'inactive'}`}>
                   <button className="cg-med-btn" onClick={() => setEditing(m)}>
-                    <Pill med={m} />
+                    <Pill med={m} size="md" />
                     <span className="cg-dose-text">
                       <strong>{m.name}</strong>
-                      <span className="muted">
-                        {m.dose} · {m.times.map(spokenTime).join(', ')}
-                        {!m.active && ' · suspendu'}
+                      <span className="cg-meta">
+                        {m.dose}
+                        {m.instructions && ` · ${m.instructions}`}
                       </span>
-                      {m.instructions && <span className="muted small">{m.instructions}</span>}
+                      <span className="cg-times">
+                        {m.active ? (
+                          [...m.times].sort().map((t) => (
+                            <span key={t} className="time-chip">
+                              {t}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="time-chip off">Suspendu</span>
+                        )}
+                      </span>
                     </span>
-                    <span aria-hidden>›</span>
+                    <Icon name="chevron" size={18} className="cg-chev" />
                   </button>
                 </li>
               ))}
@@ -142,23 +224,33 @@ export function CaregiverApp() {
         )}
 
         {tab === 'alertes' && (
-          <section aria-label="Alertes">
-            <p className="muted small">
-              Une alerte part quand une prise a plus de {state.settings.lateAfterMin} min de retard. Elle est envoyée à{' '}
-              {state.patient.name} et aux proches qui ont les alertes activées.
+          <section aria-label="Alertes" className="cg-stack">
+            <h2 className="cg-title">Alertes</h2>
+            <p className="cg-help">
+              Une alerte part quand une prise a plus de {state.settings.lateAfterMin} minutes de retard. {state.patient.name} reçoit un rappel, et les
+              proches qui ont activé les alertes sont prévenus.
             </p>
             <ul className="cg-list">
               {state.alerts.map((a) => (
                 <li key={a.id} className="cg-alert">
-                  <span className="cg-time">{formatTime(Date.parse(a.at))}</span>
+                  <span className="cg-alert-icon">
+                    <Icon name="alert" size={18} stroke={2.4} />
+                  </span>
                   <span className="cg-dose-text">
                     <strong>{a.message}</strong>
-                    <span className="muted small">Envoyé à : {a.recipients.join(', ')}</span>
+                    <span className="cg-meta">
+                      {formatTime(Date.parse(a.at))} · envoyé à {a.recipients.join(', ')}
+                    </span>
                   </span>
                 </li>
               ))}
-              {state.alerts.length === 0 && <li className="muted">Aucune alerte pour le moment.</li>}
             </ul>
+            {state.alerts.length === 0 && (
+              <div className="cg-empty">
+                <Icon name="bell" size={28} />
+                <p>Aucune alerte pour l’instant. Tout va bien.</p>
+              </div>
+            )}
           </section>
         )}
 
@@ -166,18 +258,13 @@ export function CaregiverApp() {
       </div>
 
       <nav className="cg-tabs" aria-label="Sections">
-        {(
-          [
-            ['jour', '📋', 'Aujourd’hui'],
-            ['ordonnance', '💊', 'Ordonnance'],
-            ['alertes', '🔔', 'Alertes'],
-            ['reglages', '⚙️', 'Réglages'],
-          ] as const
-        ).map(([id, icon, label]) => (
+        {TABS.map(([id, icon, label]) => (
           <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}>
-            <span aria-hidden>{icon}</span>
+            <span className="cg-tab-icon">
+              <Icon name={icon} size={22} stroke={tab === id ? 2.4 : 1.9} />
+              {id === 'alertes' && unread > 0 && <span className="badge">{unread}</span>}
+            </span>
             {label}
-            {id === 'alertes' && unread > 0 && <span className="badge">{unread}</span>}
           </button>
         ))}
       </nav>
