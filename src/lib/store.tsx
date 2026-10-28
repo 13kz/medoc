@@ -3,7 +3,8 @@ import { diffMed } from './changes'
 import { parseStored } from './migrate'
 import { consume, medIdOf } from './stock'
 import { seedState } from './seed'
-import { SyncClient, syncConfig, type SyncStatus } from './sync'
+import type { Link } from './links'
+import { SyncClient, type SyncStatus } from './sync'
 import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
@@ -190,21 +191,22 @@ type Store = { state: AppState; dispatch: (a: Action) => void; sync: SyncStatus 
 const StoreContext = createContext<Store | null>(null)
 
 /** Client du dossier partagé quand l'appareil en a rejoint un ; sinon tout reste dans ce navigateur. */
-function startSync(onChange: (state: AppState, status: SyncStatus) => void): SyncClient<Action> | null {
-  if (import.meta.env.MODE === 'single' || typeof window === 'undefined') return null
-  const cfg = syncConfig()
-  if (!cfg) return null
-  return new SyncClient<Action>({ ...cfg, reduce: reducer, initial: load, storage: localStorage, onChange: (s, st) => onChange(s, st) })
+function startSync(link: Link | null | undefined, onChange: (state: AppState, status: SyncStatus) => void): SyncClient<Action> | null {
+  if (!link || typeof window === 'undefined') return null
+  return new SyncClient<Action>({ url: link.url, dossier: link.dossier, token: link.token, reduce: reducer, storage: localStorage, onChange })
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+/** Sans `link`, le dossier reste dans ce navigateur. Changer de dossier : changer aussi la `key`. */
+export function StoreProvider({ children, link, onLeave }: { children: ReactNode; link?: Link | null; onLeave?: () => void }) {
   const onSync = useRef<(state: AppState, status: SyncStatus) => void>(() => {})
-  const [client] = useState(() => startSync((s, st) => onSync.current(s, st)))
+  const [client] = useState(() => startSync(link, (s, st) => onSync.current(s, st)))
   const [state, local] = useReducer(reducer, undefined, () => client?.state ?? load())
+  const [loaded, setLoaded] = useState(!client || client.state !== null)
   const [sync, setSync] = useState<SyncStatus | null>(client ? client.status : null)
   onSync.current = (s, st) => {
     local({ type: 'replace', state: s })
     setSync(st)
+    setLoaded(true)
   }
 
   useEffect(() => {
@@ -252,6 +254,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [client])
 
+  if (!loaded) {
+    const refused = sync && sync.access !== 'ok'
+    return (
+      <div className="sync-loading" role="status">
+        <p>{refused ? 'Cet appareil n’a pas ou plus accès à ce dossier.' : 'Chargement du dossier…'}</p>
+        {refused && onLeave && (
+          <button className="sync-leave" onClick={onLeave}>
+            Utiliser cet appareil seul
+          </button>
+        )}
+      </div>
+    )
+  }
   return <StoreContext.Provider value={{ state, dispatch, sync }}>{children}</StoreContext.Provider>
 }
 

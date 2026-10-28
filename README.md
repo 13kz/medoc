@@ -57,12 +57,15 @@ Un service worker garde l’application en cache : elle s’ouvre sans réseau. 
 
 ## Partager un dossier entre les téléphones
 
-Sans serveur, tout reste dans le navigateur. Avec `npm run server`, le téléphone du patient et ceux des proches partagent le même dossier :
+Sans serveur, tout reste dans le navigateur. Avec `npm run server` (données dans `data/` ou `MEDOC_DATA` ; en développement, Vite le joint derrière `/api`), le téléphone du patient, ceux des proches et la tablette du médecin partagent le même dossier :
 
-1. lancer le serveur (`npm run server`, données dans `data/` ou `MEDOC_DATA`) ; en développement, Vite le joint derrière `/api` ;
-2. ouvrir chaque appareil une fois avec le même dossier, par exemple `/patient?dossier=famille-dupont` et `/aidant?dossier=famille-dupont` (ajouter `&serveur=https://…` si le serveur est ailleurs) ; l'appareil le retient ensuite, `?dossier=aucun` revient au mode local.
+1. dans l’appli de l’aidant (`/aidant`), Réglages > « Partager ce dossier » : le dossier de ce téléphone devient le dossier partagé ;
+2. « Inviter » donne un code à 8 caractères (et un lien) pour le téléphone du patient, un autre proche ou le médecin. Il sert une fois et expire au bout de 48 heures ;
+3. sur l’autre appareil, ouvrir le lien ou la page `/rejoindre` et saisir le code : l’appareil est appairé, sans mot de passe, et s’ouvre sur l’appli de son rôle.
 
-Le premier appareil envoie son dossier comme point de départ. Ensuite chaque geste (prise, ordonnance, réglage) part au serveur, qui le numérote et le diffuse en direct (SSE) ; tous les appareils rejouent les gestes dans cet ordre, ce qui règle les conflits. Hors réseau, l'appli continue : les gestes attendent dans une file et partent au retour, sans doublon. L'horloge de démo reste propre à chaque appareil. Le nom du dossier sert pour l'instant de secret : les comptes et invitations viendront ensuite.
+Le patient confirme ses prises et règle son affichage ; les aidants et le médecin modifient l’ordonnance ; tout le monde voit le suivi. Le patient et les aidants invitent et retirent un accès (Réglages > « Qui a accès au dossier ») ; un appareil retiré perd l’accès aussitôt, flux en direct compris. Le médecin retrouve dans « Mes patients » chaque dossier où il est invité, à la place des patients d’exemple.
+
+Chaque geste (prise, ordonnance, réglage) part au serveur, qui vérifie le rôle, le numérote et le diffuse en direct (SSE) ; tous les appareils rejouent les gestes dans cet ordre, ce qui règle les conflits. Hors réseau, l’appli continue : les gestes attendent dans une file et partent au retour, sans doublon. L’horloge de démo reste propre à chaque appareil.
 
 ## Vers l’application mobile (EAS)
 

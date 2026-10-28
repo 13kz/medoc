@@ -20,6 +20,8 @@ const SCENARIOS = [
   { name: 'aidant, réglages', view: 'aidant', time: '09:10', steps: ['.cg-tabs button:nth-child(4)'] },
   { name: 'aidant, historique', view: 'aidant', time: '09:10', steps: ['.cg-week .ghost'] },
   { name: 'médecin', view: 'medecin', time: '09:10' },
+  { name: 'aidant installé, partage', view: 'aidant', time: '09:10', path: 'aidant', steps: ['.cg-tabs button:nth-child(4)'] },
+  { name: 'rejoindre un dossier', view: 'patient', time: '09:10', path: 'rejoindre?invitation=ABCD2345' },
 ]
 
 const browser = await chromium.launch()
@@ -45,7 +47,8 @@ for (const sc of SCENARIOS) {
     localStorage.setItem('medoc:v1', JSON.stringify(s))
     localStorage.setItem('medoc:view', sc.view)
   }, sc)
-  await page.reload()
+  if (sc.path) await page.goto(url + sc.path)
+  else await page.reload()
   await page.waitForTimeout(600)
   for (const sel of sc.steps ?? []) {
     await page.locator(sel).first().click()

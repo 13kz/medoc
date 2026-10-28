@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MedEditor } from '../caregiver/MedEditor'
 import { asNeededLabel } from '../lib/asNeeded'
 import { Icon } from '../components/Icon'
@@ -10,11 +10,15 @@ import { WeekBox } from '../components/WeekBox'
 import { formatGlucose, glucoseLevel, glucoseWeek } from '../lib/glucose'
 import { useNow } from '../lib/clock'
 import { adherence, dosesForDay, formatTime, missedByMed, rhythmLabel, spokenTime, weekGrid, type WeekDay } from '../lib/schedule'
-import { useStore } from '../lib/store'
-import type { Medication } from '../lib/types'
+import { fetchDossier, readLinks } from '../lib/links'
+import { useLink } from '../lib/linkContext'
+import { reducer, useStore } from '../lib/store'
+import type { AppState, Medication } from '../lib/types'
 import { SAMPLE_PATIENTS, sampleWeek } from './roster'
 
 const LIVE = 'live'
+/** Ouvrir un autre dossier recharge l'appli : on revient alors directement sur sa fiche. */
+let openDetail = false
 
 const ADVICE = [
   'Mettez le collyre juste après le dîner, avant de vous asseoir devant la télévision.',
@@ -46,11 +50,49 @@ function Spark({ week }: { week: WeekDay[] }) {
   )
 }
 
+/** Résumé d'un dossier pour la liste des patients. */
+function summary(id: string, s: AppState, now: number) {
+  const week = weekGrid(s, now)
+  const late = dosesForDay(s, now).filter((d) => d.status === 'en-retard').length
+  return {
+    id,
+    fullName: s.patient.fullName,
+    age: s.patient.age,
+    conditions: s.patient.conditions,
+    week,
+    adh: adherence(week),
+    flag: late > 0 ? `${late} en retard aujourd’hui` : null,
+  }
+}
+
 export function DoctorApp() {
   const { state, dispatch } = useStore()
   const now = useNow()
+  const { role, link, open } = useLink()
+  // Sur la tablette du médecin, la liste est celle des dossiers où il est invité.
+  const links = role === 'medecin' ? readLinks().filter((l) => l.role === 'medecin') : []
+  const [others, setOthers] = useState<Record<string, AppState>>({})
+  const linkKey = links.map((l) => l.dossier).join(',')
+  useEffect(() => {
+    let alive = true
+    for (const l of links) {
+      if (l.dossier === link?.dossier) continue
+      fetchDossier(l, reducer)
+        .then((s) => alive && setOthers((o) => ({ ...o, [l.dossier]: s })))
+        .catch(() => {
+          // Dossier injoignable (hors ligne, accès retiré) : il reste dans la liste sans chiffres.
+        })
+    }
+    return () => {
+      alive = false
+    }
+  }, [linkKey, link?.dossier])
   const [selected, setSelected] = useState<string>(LIVE)
-  const [showList, setShowList] = useState(true)
+  const [showList, setShowList] = useState(() => {
+    const list = !openDetail
+    openDetail = false
+    return list
+  })
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [draft, setDraft] = useState('')
   const [history, setHistory] = useState(false)
@@ -61,21 +103,24 @@ export function DoctorApp() {
   const today = dosesForDay(state, now)
   const lateToday = today.filter((d) => d.status === 'en-retard').length
 
-  const roster = [
-    {
-      id: LIVE,
-      fullName: state.patient.fullName,
-      age: state.patient.age,
-      conditions: state.patient.conditions,
-      week: liveWeek,
-      adh: liveAdh,
-      flag: lateToday > 0 ? `${lateToday} en retard aujourd’hui` : null,
-    },
+  const live = {
+    id: LIVE,
+    fullName: state.patient.fullName,
+    age: state.patient.age,
+    conditions: state.patient.conditions,
+    week: liveWeek,
+    adh: liveAdh,
+    flag: lateToday > 0 ? `${lateToday} en retard aujourd’hui` : null,
+  }
+  const linked = links.map((l) => (l.dossier === link?.dossier ? live : others[l.dossier] ? summary(l.dossier, others[l.dossier], now) : null))
+  // Le dossier ouvert est toujours dans la liste, même s'il n'est pas (encore) parmi les liens connus.
+  const roster = (links.some((l) => l.dossier === link?.dossier) ? linked.filter((r) => r !== null) : [
+    live,
     ...SAMPLE_PATIENTS.map((p) => {
       const week = sampleWeek(p, now)
       return { id: p.id, fullName: p.fullName, age: p.age, conditions: p.conditions, week, adh: adherence(week), flag: p.attention[0] ?? null }
     }),
-  ].sort((a, b) => (a.adh ?? 1) - (b.adh ?? 1))
+  ]).sort((a, b) => (a.adh ?? 1) - (b.adh ?? 1))
 
   const current = roster.find((r) => r.id === selected) ?? roster[0]
   const sample = SAMPLE_PATIENTS.find((p) => p.id === current.id)
@@ -119,6 +164,11 @@ export function DoctorApp() {
                 className="dr-row"
                 aria-current={r.id === current.id ? 'true' : undefined}
                 onClick={() => {
+                  const other = links.find((l) => l.dossier === r.id)
+                  if (other) {
+                    openDetail = true
+                    open(other)
+                  }
                   setSelected(r.id)
                   setShowList(false)
                 }}
@@ -136,6 +186,12 @@ export function DoctorApp() {
             </li>
           ))}
         </ul>
+        {role === 'medecin' && import.meta.env.MODE !== 'single' && (
+          <a className="dr-join" href="/rejoindre">
+            <Icon name="plus" size={16} stroke={2.6} />
+            Ajouter un patient avec son code
+          </a>
+        )}
       </div>
 
       <section className="dr-detail" aria-label={`Dossier de ${current.fullName}`}>

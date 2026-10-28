@@ -14,7 +14,8 @@ type Reduce<A> = (state: AppState, action: A) => AppState
 type PendingOp<A> = { opId: string; clientId: string; action: A }
 type ServerOp<A> = PendingOp<A> & { seq: number }
 
-export type SyncStatus = { online: boolean; pending: number }
+/** `refuse` : clé inconnue ; `retire` : l'accès de cet appareil a été retiré. */
+export type SyncStatus = { online: boolean; pending: number; access: 'ok' | 'refuse' | 'retire'; rejected: number }
 
 type Cache<A> = { clientId: string; seq: number; confirmed: AppState; pending: PendingOp<A>[] }
 
@@ -22,9 +23,9 @@ export type SyncOptions<A> = {
   /** Adresse du serveur, sans `/api`. Vide : même origine. */
   url: string
   dossier: string
+  /** Clé de cet appareil pour ce dossier. */
+  token: string
   reduce: Reduce<A>
-  /** État de départ si le dossier n'existe pas encore sur le serveur. */
-  initial: () => AppState
   onChange?: (state: AppState, status: SyncStatus) => void
   fetch?: typeof fetch
   storage?: Pick<Storage, 'getItem' | 'setItem'>
@@ -51,6 +52,8 @@ export class SyncClient<A extends AnyAction> {
   private retry: ReturnType<typeof setTimeout> | null = null
   private delay = 1000
   private stopped = true
+  private access: SyncStatus['access'] = 'ok'
+  private rejected = 0
 
   constructor(o: SyncOptions<A>) {
     this.o = o
@@ -74,7 +77,7 @@ export class SyncClient<A extends AnyAction> {
   }
 
   get status(): SyncStatus {
-    return { online: this.online, pending: this.pending.length }
+    return { online: this.online, pending: this.pending.length, access: this.access, rejected: this.rejected }
   }
 
   dispatch(action: A) {
@@ -124,22 +127,31 @@ export class SyncClient<A extends AnyAction> {
     return `${this.o.url.replace(/\/$/, '')}/api/dossiers/${encodeURIComponent(this.o.dossier)}${path}`
   }
 
+  private call(path: string, init: RequestInit = {}) {
+    return this.fetch(this.api(path), { ...init, headers: { ...init.headers, authorization: `Bearer ${this.o.token}` } }).then((res) => {
+      if (res.status === 401 || res.status === 403) {
+        this.access = res.status === 403 ? 'retire' : 'refuse'
+        this.stop()
+        this.changed()
+        throw new Error('accès')
+      }
+      return res
+    })
+  }
+
   private async connect() {
     this.abort?.abort()
     const abort = (this.abort = new AbortController())
     try {
       if (!this.confirmed) await this.load()
-      const res = await this.fetch(this.api(`/events?since=${this.seq}`), { signal: abort.signal, headers: { accept: 'text/event-stream' } })
-      if (res.status === 404) {
-        // Dossier effacé côté serveur : on le recrée à partir de ce qu'on a.
-        await this.create(this.confirmed!)
-        throw new Error('recréé')
-      }
+      const res = await this.call(`/events?since=${this.seq}`, { signal: abort.signal, headers: { accept: 'text/event-stream' } })
       if (!res.ok || !res.body) throw new Error(`flux ${res.status}`)
       this.delay = 1000
       this.setOnline(true)
       this.flush()
       await this.readStream(res.body, abort.signal)
+      // Flux coupé par le serveur, par exemple quand l'accès vient d'être retiré : on vérifie tout de suite.
+      if (abort === this.abort) await this.call('')
       throw new Error('flux fermé')
     } catch {
       if (abort !== this.abort) return
@@ -153,12 +165,7 @@ export class SyncClient<A extends AnyAction> {
   }
 
   private async load(): Promise<void> {
-    const res = await this.fetch(this.api())
-    if (res.status === 404) {
-      const base = { ...this.o.initial() }
-      await this.create(base)
-      return this.load()
-    }
+    const res = await this.call('')
     if (!res.ok) throw new Error(`dossier ${res.status}`)
     const { base, ops } = (await res.json()) as { base: AppState; ops: ServerOp<A>[] }
     this.confirmed = base
@@ -167,11 +174,6 @@ export class SyncClient<A extends AnyAction> {
     for (const op of ops) this.apply(op)
     this.save()
     this.changed()
-  }
-
-  private async create(base: AppState) {
-    const res = await this.fetch(this.api(), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ base }) })
-    if (!res.ok) throw new Error(`création ${res.status}`)
   }
 
   private async readStream(body: ReadableStream<Uint8Array>, signal: AbortSignal) {
@@ -230,12 +232,20 @@ export class SyncClient<A extends AnyAction> {
     this.flushing = true
     this.save()
     try {
-      const res = await this.fetch(this.api('/ops'), {
+      const res = await this.call('/ops', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ops: this.pending }),
       })
       if (!res.ok) throw new Error(`envoi ${res.status}`)
+      // Actions que le rôle de cet appareil ne permet pas : on les retire pour ne pas bloquer la file.
+      const { rejected = [] } = (await res.json()) as { rejected?: string[] }
+      if (rejected.length) {
+        this.rejected += rejected.length
+        this.pending = this.pending.filter((p) => !rejected.includes(p.opId))
+        this.save()
+        this.changed()
+      }
     } catch {
       // Les actions restent dans la file ; elles repartiront à la reconnexion.
     } finally {
@@ -290,30 +300,3 @@ export class SyncClient<A extends AnyAction> {
   }
 }
 
-const CONFIG_KEY = 'medoc:sync'
-
-export type SyncConfig = { url: string; dossier: string }
-
-/**
- * Dossier partagé de cet appareil. On le rejoint une fois avec `?dossier=…` (et `&serveur=…` si le
- * serveur n'est pas à la même adresse), puis il est retenu ; `?dossier=aucun` revient au mode local.
- */
-export function syncConfig(search = location.search, storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = localStorage): SyncConfig | null {
-  try {
-    const params = new URLSearchParams(search)
-    const dossier = params.get('dossier')
-    if (dossier === 'aucun') {
-      storage.removeItem(CONFIG_KEY)
-      return null
-    }
-    if (dossier && /^[A-Za-z0-9_-]{6,64}$/.test(dossier)) {
-      const cfg = { dossier, url: params.get('serveur') ?? (import.meta.env.VITE_SYNC_URL as string | undefined) ?? '' }
-      storage.setItem(CONFIG_KEY, JSON.stringify(cfg))
-      return cfg
-    }
-    const raw = storage.getItem(CONFIG_KEY)
-    return raw ? (JSON.parse(raw) as SyncConfig) : null
-  } catch {
-    return null
-  }
-}
