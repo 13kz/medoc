@@ -13,7 +13,7 @@ export function offsetTo(hhmm: string, real = Date.now()): number {
 export function seedState(): AppState {
   const real = Date.now()
   const state: AppState = {
-    version: 2,
+    version: 3,
     patient: {
       name: 'Maman',
       fullName: 'Mireille Benali',
@@ -90,7 +90,7 @@ export function seedState(): AppState {
       { id: 'medecin', name: 'Dr Martin', role: 'medecin', notify: false },
       { id: 'voisine', name: 'Sylvie (voisine)', role: 'tiers', notify: true },
     ],
-    settings: { lateAfterMin: 30, snoozeMin: 10 },
+    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
     intakes: {},
     snoozes: {},
     alerts: [],

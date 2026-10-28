@@ -18,6 +18,7 @@ export type Action =
   | { type: 'upsertContact'; contact: Contact }
   | { type: 'deleteContact'; id: string }
   | { type: 'addAlert'; alert: Alert }
+  | { type: 'resolveAlert'; id: string; at: string }
   | { type: 'readAlerts' }
   | { type: 'addNote'; note: Note }
   | { type: 'ackNote'; id: string }
@@ -81,8 +82,10 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'deleteContact':
       return { ...state, contacts: state.contacts.filter((c) => c.id !== action.id) }
     case 'addAlert':
-      if (state.alerts.some((a) => a.doseKey === action.alert.doseKey)) return state
+      if (state.alerts.some((a) => a.doseKey === action.alert.doseKey && a.level === action.alert.level)) return state
       return { ...state, alerts: [action.alert, ...state.alerts].slice(0, 100) }
+    case 'resolveAlert':
+      return { ...state, alerts: state.alerts.map((a) => (a.id === action.id ? { ...a, resolvedAt: action.at } : a)) }
     case 'addNote':
       return { ...state, notes: [action.note, ...state.notes].slice(0, 50) }
     case 'ackNote':

@@ -40,7 +40,7 @@ describe('migrate', () => {
     expect(state.medications).toHaveLength(1)
     expect(state.medications[0].times).toEqual(['08:00'])
     expect(state.intakes).toEqual({ k: { takenAt: '2026-03-10T07:00:00Z', by: 'patient' } })
-    expect(state.settings).toEqual({ lateAfterMin: 45, snoozeMin: 10 })
+    expect(state.settings).toMatchObject({ lateAfterMin: 45, snoozeMin: 10, escalateAfterMin: 30 })
     expect(state.contacts).toEqual([])
     expect(state.clock).toEqual({ offsetMs: 0, speed: 1, anchorMs: at('2026-03-10 09:00') })
   })
@@ -49,5 +49,14 @@ describe('migrate', () => {
     expect(parseStored('{pas du json')).toBeNull()
     expect(parseStored('[1,2]')).toBeNull()
     expect(migrate({ version: CURRENT_VERSION + 1 })).toBeNull()
+  })
+})
+
+describe('migrate v2 → v3', () => {
+  it('les alertes existantes deviennent des alertes aux proches, envoyées aussitôt', () => {
+    const v2 = { ...makeState(), version: 2, alerts: [{ id: 'a', at: '2026-03-10T07:30:00.000Z', doseKey: 'k', message: 'm', recipients: ['Naz'], read: true }] }
+    const { state, repaired } = migrate(v2)!
+    expect(repaired).toBe(false)
+    expect(state.alerts).toEqual([{ id: 'a', level: 'proches', at: '2026-03-10T07:30:00.000Z', deliverAt: '2026-03-10T07:30:00.000Z', doseKey: 'k', message: 'm', recipients: ['Naz'], read: true }])
   })
 })

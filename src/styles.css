@@ -3544,3 +3544,15 @@ button.armed {
 .small-btn {
   min-height: 44px;
 }
+
+/* Alerte close : la prise a fini par être faite. */
+.cg-alert.resolved .cg-alert-icon {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}

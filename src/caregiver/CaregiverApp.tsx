@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { WeekBox } from '../components/WeekBox'
+import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
 import { MOMENTS, adherence, dosesForDay, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
@@ -39,10 +40,11 @@ export function CaregiverApp() {
   const [tab, setTab] = useState<Tab>('jour')
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
-  const lastAlert = useRef(state.alerts[0]?.id)
-
   const doses = dosesForDay(state, now)
-  const unread = state.alerts.filter((a) => !a.read).length
+  const alerts = deliveredAlerts(state, now)
+  const unread = alerts.filter((a) => !a.read).length
+  const lastAlert = useRef(alerts[0]?.id)
+  const resolvedSeen = useRef(new Set(alerts.filter((a) => a.resolvedAt).map((a) => a.id)))
   const done = doses.filter((d) => d.status === 'pris').length
   const late = doses.filter((d) => d.status === 'en-retard')
   const next = nextUpcoming(doses)
@@ -50,17 +52,26 @@ export function CaregiverApp() {
   const week = weekGrid(state, now)
   const pctWeek = adherence(week)
 
-  // Bandeau façon notification push quand une nouvelle alerte arrive.
+  // Bandeau façon notification push quand une alerte arrive, puis quand la prise finit par être faite.
   useEffect(() => {
-    const latest = state.alerts[0]
-    if (!latest || latest.id === lastAlert.current) return
-    lastAlert.current = latest.id
-    setBanner(latest.message)
+    let message: string | null = null
+    const latest = alerts[0]
+    if (latest && latest.id !== lastAlert.current && !latest.resolvedAt) {
+      lastAlert.current = latest.id
+      message = latest.message
+    }
+    for (const a of alerts) {
+      if (!a.resolvedAt || resolvedSeen.current.has(a.id)) continue
+      resolvedSeen.current.add(a.id)
+      message ??= resolvedMessage(state, a)
+    }
+    if (!message) return
+    setBanner(message)
     vibrate()
-    systemNotify('Medoc', latest.message)
+    systemNotify('Medoc', message)
     const id = setTimeout(() => setBanner(null), 6000)
     return () => clearTimeout(id)
-  }, [state.alerts])
+  }, [alerts.map((a) => `${a.id}:${a.resolvedAt ?? ''}`).join(',')])
 
   useEffect(() => {
     if (tab === 'alertes' && unread > 0) dispatch({ type: 'readAlerts' })
@@ -279,25 +290,28 @@ export function CaregiverApp() {
               </ul>
             )}
             <p className="cg-help">
-              Une alerte part quand une prise a plus de {state.settings.lateAfterMin} minutes de retard. {state.patient.name} reçoit un rappel, et les
-              proches qui ont activé les alertes sont prévenus.
+              Après {state.settings.lateAfterMin} minutes de retard, le téléphone de {state.patient.name} relance. Sans réponse{' '}
+              {state.settings.escalateAfterMin} minutes plus tard, les proches qui ont activé les alertes sont prévenus
+              {state.settings.quietHours && `, sauf entre ${spokenTime(state.settings.quietFrom)} et ${spokenTime(state.settings.quietTo)} : l’alerte attend le matin`}.
             </p>
             <ul className="cg-list">
-              {state.alerts.map((a) => (
-                <li key={a.id} className="cg-alert">
+              {alerts.map((a) => (
+                <li key={a.id} className={`cg-alert ${a.resolvedAt ? 'resolved' : ''}`}>
                   <span className="cg-alert-icon">
-                    <Icon name="alert" size={18} stroke={2.4} />
+                    <Icon name={a.resolvedAt ? 'check' : 'alert'} size={18} stroke={2.4} />
                   </span>
                   <span className="cg-dose-text">
-                    <strong>{a.message}</strong>
+                    <strong>{a.resolvedAt ? resolvedMessage(state, a) : a.message}</strong>
                     <span className="cg-meta">
-                      {formatTime(Date.parse(a.at))}, envoyée à {a.recipients.join(', ')}
+                      {a.resolvedAt && `${a.message} `}
+                      {formatTime(Date.parse(a.deliverAt))}, envoyée à {a.recipients.join(', ')}
+                      {a.deliverAt !== a.at && ` (retenue pendant la nuit depuis ${formatTime(Date.parse(a.at))})`}
                     </span>
                   </span>
                 </li>
               ))}
             </ul>
-            {state.alerts.length === 0 && (
+            {alerts.length === 0 && (
               <div className="cg-empty">
                 <Icon name="bell" size={28} />
                 <p>Aucune alerte pour l’instant. Tout va bien.</p>
