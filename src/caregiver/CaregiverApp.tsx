@@ -91,7 +91,6 @@ export function CaregiverApp() {
       {banner && (
         <button
           className="cg-banner"
-          aria-label={`Medoc, maintenant ${banner}`}
           onClick={() => {
             setBanner(null)
             setTab('alertes')
@@ -101,7 +100,7 @@ export function CaregiverApp() {
             <Icon name="alert" size={18} stroke={2.4} />
           </span>
           <span className="cg-banner-text">
-            <span className="cg-banner-app">Medoc, maintenant</span>
+            <span className="cg-banner-app">Medoc, maintenant :</span>{' '}
             <span>{banner}</span>
           </span>
         </button>

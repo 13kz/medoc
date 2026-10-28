@@ -25,7 +25,7 @@ const SCENARIOS = [
 const browser = await chromium.launch()
 let failures = 0
 for (const sc of SCENARIOS) {
-  const context = await browser.newContext({ viewport: { width: 1300, height: 950 } })
+  const context = await browser.newContext({ viewport: { width: 1300, height: 950 }, reducedMotion: 'reduce' })
   const page = await context.newPage()
   await page.goto(url)
   await page.evaluate(() => localStorage.clear())
