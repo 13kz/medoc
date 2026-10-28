@@ -140,7 +140,7 @@ export function dosesOn(state: AppState, dayMs: number, now: number): Dose[] {
   const lateMs = state.settings.lateAfterMin * 60000
   const doses: Dose[] = []
   for (const med of state.medications) {
-    if (!med.active || !takesOn(med, day)) continue
+    if (!med.active || med.asNeeded || !takesOn(med, day)) continue
     for (const time of med.times) {
       const key = doseKey(day, med.id, time)
       const at = atTime(dayMs, time)

@@ -1,7 +1,7 @@
 import { seedState } from './seed'
-import type { Alert, AppState, Contact, Medication, Note } from './types'
+import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note } from './types'
 
-export const CURRENT_VERSION = 3
+export const CURRENT_VERSION = 4
 
 type Raw = Record<string, unknown>
 
@@ -20,6 +20,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     ...s,
     alerts: Array.isArray(s.alerts) ? s.alerts.map((a) => (isObj(a) ? { level: 'proches', deliverAt: a.at, ...a } : a)) : s.alerts,
   }),
+  // v3 : pas encore de médicaments « si besoin ».
+  3: (s) => ({ ...s, asNeededIntakes: [] }),
 }
 
 export interface Loaded {
@@ -94,13 +96,25 @@ function fixRhythm(r: unknown): Medication['rhythm'] {
   return undefined
 }
 
+function fixAsNeeded(a: unknown): Medication['asNeeded'] {
+  if (!isObj(a) || !isNum(a.maxPerDay) || !isNum(a.minGapH) || a.maxPerDay < 1 || a.minGapH < 0) return undefined
+  return { maxPerDay: a.maxPerDay, minGapH: a.minGapH }
+}
+
+const fixAsNeededIntake = (x: unknown): AsNeededIntake | null =>
+  isObj(x) && isStr(x.id) && isStr(x.medId) && fixIso(x.takenAt)
+    ? { id: x.id, medId: x.medId, takenAt: x.takenAt as string, by: x.by === 'aidant' ? 'aidant' : 'patient', early: x.early === true }
+    : null
+
 function fixMed(x: unknown): Medication | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.name)) return null
   const times = Array.isArray(x.times) ? x.times.filter((t): t is string => isStr(t) && HHMM.test(t)) : []
-  const { rhythm: _r, startDate: _s, endDate: _e, ...rest } = x
+  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, ...rest } = x
   const rhythm = fixRhythm(x.rhythm)
+  const asNeeded = fixAsNeeded(x.asNeeded)
   return {
     ...(rest as unknown as Medication),
+    ...(asNeeded ? { asNeeded } : {}),
     ...(rhythm ? { rhythm } : {}),
     ...(isDay(x.startDate) ? { startDate: x.startDate } : {}),
     ...(isDay(x.endDate) ? { endDate: x.endDate } : {}),
@@ -174,6 +188,7 @@ export function migrate(input: unknown, real = Date.now()): Loaded | null {
     contacts: keep(raw.contacts, fixContact, flag),
     settings: mergeTyped(defaults.settings, raw.settings, flag),
     intakes: keepRecord(raw.intakes, fixIntake, flag),
+    asNeededIntakes: keep(raw.asNeededIntakes, fixAsNeededIntake, flag),
     snoozes: keepRecord(raw.snoozes, fixIso, flag),
     alerts: keep(raw.alerts, fixAlert, flag),
     notes: keep(raw.notes, fixNote, flag),

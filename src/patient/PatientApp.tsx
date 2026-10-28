@@ -13,7 +13,9 @@ import {
 } from '../lib/platform'
 import { MOMENTS, dayKey, dosesForDay, isLastDay, momentInfo, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
-import type { Dose, DoseStatus } from '../lib/types'
+import { asNeededAdvice, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
+import type { Dose, DoseStatus, Medication } from '../lib/types'
+import { AsNeededPanel } from './AsNeededPanel'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 
@@ -83,6 +85,18 @@ export function PatientApp() {
     say(`D’accord, je ${tv(patient, 'te', 'vous')} le rappelle dans ${settings.snoozeMin} minutes.`)
   }
 
+  const takeAsNeeded = (med: Medication, early: boolean) => {
+    const status = asNeededStatus(state, med, now)
+    if (!status.allowed && !early) return say(asNeededAdvice(patient, med, status, now))
+    dispatch({
+      type: 'takeAsNeeded',
+      intake: { id: `${med.id}|${now}`, medId: med.id, takenAt: new Date(now).toISOString(), by: 'patient', early: !status.allowed },
+    })
+    vibrate()
+    setFlash({ kind: 'ok', text: `${med.name} : c’est noté` })
+    say(status.allowed ? asNeededAdvice(patient, med, status, now) : `C’est noté. ${tv(patient, 'Tes', 'Vos')} proches le verront.`)
+  }
+
   const listen = () => {
     if (listening) return
     stopSpeaking()
@@ -92,6 +106,9 @@ export function PatientApp() {
       const dose = pending[0]
       if (!text) return say('Je n’ai rien entendu.')
       if (dose && isPostpone(text)) return later(dose)
+      // « J'ai pris un Doliprane » : un médicament « si besoin » nommé.
+      const prn = asNeededMeds(state).find((m) => text.toLowerCase().includes(m.name.split(' ')[0].toLowerCase()))
+      if (prn && isConfirmation(text)) return takeAsNeeded(prn, false)
       if (dose && isConfirmation(text)) return take(dose)
       if (/journ|reste|quoi/i.test(text)) return say(daySummary(patient, doses))
       say(dose ? tv(patient, 'Je n’ai pas compris. Dis : c’est pris, ou : plus tard.', 'Je n’ai pas compris. Dites : c’est pris, ou : plus tard.') : 'Je n’ai pas compris.')
@@ -302,6 +319,8 @@ export function PatientApp() {
           </div>
         </section>
       )}
+
+      {!voiceFirst && <AsNeededPanel now={now} onTake={takeAsNeeded} />}
 
       {!voiceFirst && (
         <section className="p-day" aria-label="Ma journée">
