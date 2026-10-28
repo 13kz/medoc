@@ -75,6 +75,12 @@ Le serveur fait tourner le même moteur d’alertes que l’appli, toutes les 30
 - Clés VAPID créées au premier lancement dans `MEDOC_DATA/_vapid.json` ; chiffrement aes128gcm (RFC 8291) fait par le serveur, sans dépendance.
 - Les heures de prise sont des heures locales : lancer le serveur dans le fuseau du patient, par exemple `TZ=Europe/Paris npm run server`.
 
+## Scanner une ordonnance
+
+Onglet Ordonnance de l’aidant, « Scanner une ordonnance » : photo (ou texte collé), lecture dans le navigateur avec Tesseract (modèle français servi par l’appli, la photo ne quitte pas le téléphone), puis une proposition par médicament : nom et dosage, quantité, heures du pilulier, durée, « si besoin », consignes (« pendant le repas », « dans chaque œil »). Ce qui reste incertain est signalé. Chaque proposition s’ouvre dans l’éditeur habituel : rien n’entre dans l’ordonnance sans « Enregistrer ».
+
+La lecture de la posologie (`src/lib/prescription.ts`) est testée à part : « 1 cp matin et soir », « 2 fois par jour pendant 7 jours », « 1 sachet si douleur, maximum 3 par jour », « un jour sur deux », « toutes les 8 heures »…
+
 ## Application mobile (Expo, EAS)
 
 `mobile/` est une coque Expo : l’appli web du patient dans une WebView, et, autour, ce que seul le natif garantit.
@@ -94,4 +100,3 @@ eas build --profile production --platform all    # Play Store et App Store
 
 L’adresse de l’appli web chargée vient de `EXPO_PUBLIC_MEDOC_URL`, réglée par profil dans `mobile/eas.json` (développement : la machine locale, `npm run dev -- --host`).
 
-Reste à faire : le scan de l’ordonnance.
