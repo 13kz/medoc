@@ -11,7 +11,7 @@
   --surface: #ffffff;
   --ink: #14201a;
   --ink-2: #4b5a52;
-  --ink-3: #75837b;
+  --ink-3: #5c6962;
   --line: #d2d9d2;
   --line-2: #e6ebe5;
   --green: #0b6e4f;
@@ -280,8 +280,6 @@ button.armed {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -442,8 +440,6 @@ button.armed {
   text-align: center;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -647,7 +643,6 @@ button.armed {
 }
 
 .p-date::first-letter {
-  text-transform: uppercase;
 }
 
 .mode-voix .p-head {
@@ -1059,8 +1054,6 @@ button.armed {
   margin: 0 0 8px 4px;
   font-size: 0.78em;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--fg-2);
 }
 
@@ -1400,8 +1393,6 @@ button.armed {
   margin: 4px 0 8px 4px;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -1724,8 +1715,6 @@ button.armed {
   margin: 0;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -2235,4 +2224,1323 @@ button.armed {
   .cg-tabs {
     padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ===================================================================
+ * Troisième passe : le pilulier comme fil conducteur.
+ * Chaque moment de la journée a la couleur de couvercle d'un pilulier
+ * (matin jaune, midi orange, soir bleu, coucher violet). Le compartiment
+ * en cours colore tout l'écran du patient ; l'aidant retrouve les mêmes
+ * couleurs dans son suivi. Pas d'étiquettes en capitales.
+ * =================================================================== */
+
+.patient {
+  --tone: #ffd43b;
+  --tone-ink: #000000;
+}
+
+.p-head {
+  gap: 2px;
+}
+
+.p-clock {
+  font-size: 3.5em;
+}
+
+.p-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.p-hello {
+  display: block;
+  font-weight: 500;
+  color: var(--fg-2);
+}
+
+/* Le pilulier : une boîte, des cloisons, un couvercle coloré par compartiment. */
+.pillbox {
+  gap: 0;
+  padding: 0;
+  border-radius: 20px;
+  border: 3px solid var(--edge);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.pb-cell {
+  position: relative;
+  gap: 6px;
+  padding: 14px 2px 10px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg-2);
+}
+
+.pb-cell + .pb-cell {
+  border-left: 3px solid var(--edge);
+}
+
+.pb-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: var(--lid);
+}
+
+.pb-lid {
+  display: grid;
+  place-items: center;
+  width: 1.9em;
+  height: 1.9em;
+  padding: 0.3em;
+  border-radius: 50%;
+  color: var(--fg-2);
+}
+
+.pb-label {
+  font-size: 0.7em;
+  color: var(--fg);
+}
+
+.pb-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.pb-dots span {
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 50%;
+  border: 2px solid var(--fg-2);
+}
+
+.pb-dots span.on {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.pb-done {
+  background: var(--lid);
+  color: #000;
+}
+
+.pb-done .pb-lid,
+.pb-done .pb-label {
+  color: #000;
+}
+
+.pb-done .pb-dots span {
+  border-color: #000;
+  background: #000;
+}
+
+.pb-now,
+.pb-late {
+  background: var(--card-2);
+  box-shadow: none;
+}
+
+.pb-now::before,
+.pb-late::before {
+  height: 100%;
+  opacity: 0.16;
+}
+
+.pb-now .pb-lid {
+  background: var(--lid);
+  color: #000;
+}
+
+.pb-late .pb-lid {
+  background: var(--warn);
+  color: var(--warn-ink);
+}
+
+.pb-later {
+  opacity: 0.75;
+}
+
+/* Le compartiment ouvert : bordure et couvercle à la couleur du moment. */
+.p-now {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 4px solid var(--tone);
+}
+
+.p-now.due {
+  border-color: var(--tone);
+}
+
+.mode-standard .p-now.due,
+.mode-standard .p-now.late {
+  border-color: var(--fg);
+  box-shadow: none;
+}
+
+.p-now.late {
+  border-color: var(--warn);
+}
+
+.p-lid {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  padding: 0.7em 1em;
+  background: var(--tone);
+  color: var(--tone-ink);
+}
+
+.p-now.late .p-lid {
+  background: var(--warn);
+  color: var(--warn-ink);
+}
+
+.p-lid-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95em;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.p-lid-text span {
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.p-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 6px;
+}
+
+.p-tray {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.p-tray > span {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  opacity: 0.55;
+}
+
+.p-tray > span.on {
+  border-color: var(--tone);
+  opacity: 1;
+}
+
+.mode-standard .p-tray > span.on {
+  border-color: var(--fg);
+}
+
+.p-tray .pill-md {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.p-dose {
+  color: var(--tone);
+}
+
+.p-now.late .p-dose {
+  color: var(--warn);
+}
+
+.mode-standard .p-dose,
+.mode-standard .p-now.late .p-dose {
+  color: var(--fg);
+}
+
+.p-now .p-actions {
+  padding: 12px 16px 16px;
+}
+
+.p-take {
+  background: var(--tone);
+  border-color: var(--tone);
+  color: var(--tone-ink);
+  box-shadow: 0 6px 0 -1px color-mix(in srgb, var(--tone) 50%, #000);
+}
+
+.p-take:active {
+  box-shadow: 0 3px 0 -1px color-mix(in srgb, var(--tone) 50%, #000);
+}
+
+.p-now.late .p-take {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: var(--warn-ink);
+  box-shadow: 0 6px 0 -1px color-mix(in srgb, var(--warn) 50%, #000);
+}
+
+.mode-standard .p-take {
+  box-shadow: 0 6px 0 -1px #121512;
+  border-color: #121512;
+}
+
+.p-now.calm {
+  gap: 14px;
+  padding: 26px 16px 16px;
+  border-color: var(--edge);
+}
+
+.p-now.calm .p-actions {
+  padding: 0;
+}
+
+.p-ok {
+  background: var(--tone);
+  color: var(--tone-ink);
+}
+
+.p-flash.ok .icon,
+.mode-standard .p-flash.ok .icon {
+  color: var(--tone);
+}
+
+/* Mode voix : le compartiment devient tout l'écran. */
+.mode-voix .p-now {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.mode-voix .p-lid {
+  border-radius: 20px;
+}
+
+.mode-voix .p-box {
+  padding: 14px 0 4px;
+}
+
+.mode-voix .p-now .p-actions {
+  padding: 10px 0 0;
+}
+
+.mode-voix .p-med {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* Ma journée, rangée par compartiment */
+.p-moment h2 {
+  font-size: 0.85em;
+  color: var(--fg);
+}
+
+.p-moment-lid {
+  display: grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 8px;
+  background: var(--lid);
+  color: #000;
+}
+
+.st-a-prendre label {
+  border-color: var(--lid);
+}
+
+.mode-standard .st-a-prendre label {
+  border-color: var(--fg);
+}
+
+.st-pris .p-check {
+  background: var(--lid);
+  border-color: var(--lid);
+  color: #000;
+}
+
+/* --------- Aidant --------- */
+
+.cg-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.cg-summary-title {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.cg-summary-next {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.cg-box {
+  display: flex;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.cg-cell {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 2px 10px;
+}
+
+.cg-cell + .cg-cell {
+  border-left: 2px solid var(--ink);
+}
+
+.cg-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: var(--lid);
+}
+
+.cg-cell.full {
+  background: var(--lid);
+}
+
+.cg-cell-lid {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--ink);
+}
+
+.cg-cell-name {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.cg-cell-count {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.cg-cell.full .cg-cell-count {
+  color: var(--ink);
+}
+
+.cg-cell.late .cg-cell-count {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.cg-cell.late .cg-cell-lid {
+  background: var(--red);
+  color: #fff;
+}
+
+.cg-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cg-moment h2 {
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.cg-moment-lid {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--lid);
+  color: #000;
+}
+
+.cg-rows {
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+  border-left: 3px solid var(--lid);
+  margin-left: 11px;
+}
+
+.cg-dose {
+  grid-template-columns: 42px 36px 1fr 44px;
+  padding: 10px 0 10px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cg-dose + .cg-dose {
+  border-top: 1px solid var(--line-2);
+}
+
+.cg-dose.st-en-retard {
+  border-color: var(--line-2);
+  background: transparent;
+}
+
+.cg-state {
+  font-weight: 700;
+}
+
+.cg-state.st-pris {
+  color: var(--green-strong);
+}
+
+.cg-state.st-en-retard {
+  color: var(--red);
+}
+
+.cg-state.st-a-prendre {
+  color: var(--amber);
+}
+
+.cg-state.st-reporte {
+  color: var(--blue);
+}
+
+.cg-state.st-a-venir {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.cg-dose.st-pris .cg-dose-text strong {
+  color: var(--ink-2);
+}
+
+/* Ordonnance : la même logique de liste, sans pile de cartes. */
+.cg-med {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cg-med + .cg-med {
+  border-top: 1px solid var(--line-2);
+}
+
+.cg-med-btn {
+  padding: 12px 4px;
+  border-radius: 12px;
+}
+
+.cg-med-btn:hover {
+  background: var(--surface);
+}
+
+.cg-content > section > .cg-list:has(.cg-med),
+.cg-content > section > .cg-list:has(.cg-alert) {
+  gap: 0;
+}
+
+.cg-alert {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 0;
+}
+
+.cg-alert + .cg-alert {
+  border-top: 1px solid var(--line-2);
+}
+
+.group h3 {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* Libellés de la coque, en casse normale */
+.side-card h2 {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.device-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.patient > * {
+  flex-shrink: 0;
+}
+
+.patient.mode-malvoyant,
+.patient.mode-voix {
+  /* Le retard prend un rouge corail, distinct de l'orange du midi. */
+  --warn: #ff7a6b;
+}
+
+/* ======================= Tablette ======================= */
+
+.device-tablet .device-body {
+  width: min(940px, calc(100vw - 400px));
+  min-width: 640px;
+  border-radius: 40px;
+  padding: 16px;
+}
+
+.device-tablet .device-glass {
+  border-radius: 26px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.device-tablet .device-status {
+  height: 30px;
+  padding: 0 22px;
+  font-size: 13px;
+}
+
+.device-tablet .device-island {
+  top: 10px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #2a2d31;
+}
+
+.device-tablet .device-btn.b1,
+.device-tablet .device-btn.b2 {
+  display: none;
+}
+
+/* ======================= Semainier ======================= */
+
+.wk-wrap {
+  overflow-x: auto;
+}
+
+.wk {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-size: 12.5px;
+}
+
+.wk thead th {
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-bottom: 2px;
+}
+
+.wk thead th.today {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.wk tbody th {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+
+.wk-lid {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  border-radius: 6px;
+  background: var(--lid);
+  color: #000;
+  vertical-align: middle;
+}
+
+.wk-cell {
+  height: 30px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 8px;
+  background: var(--paper-2);
+  text-align: center;
+}
+
+.wk-dot {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.wk-full {
+  background: var(--lid);
+  color: #000;
+}
+
+.wk-partial {
+  background: linear-gradient(135deg, var(--lid) 50%, var(--paper-2) 50%);
+  box-shadow: inset 0 0 0 2px var(--lid);
+}
+
+.wk-missed {
+  background: var(--red-soft);
+  color: var(--red);
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.wk-future {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+
+.wk-none {
+  background: transparent;
+}
+
+.wk-cell.today {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.wk-cell.wk-none.today {
+  outline: 0;
+}
+
+/* ======================= Médecin ======================= */
+
+.dr {
+  --dr: var(--blue);
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14.5px;
+  line-height: 1.4;
+  container-type: inline-size;
+}
+
+.dr-list {
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--line-2);
+  background: #f6f7fa;
+}
+
+.dr-list-head {
+  padding: 18px 18px 12px;
+}
+
+.dr-who {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.dr-list-head h1 {
+  margin: 2px 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.dr-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.dr-list ul {
+  margin: 0;
+  padding: 0 8px 16px;
+  list-style: none;
+}
+
+.dr-row {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+}
+
+.dr-row:hover {
+  background: var(--surface);
+}
+
+.dr-row[aria-current='true'] {
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--dr), 0 1px 3px rgb(20 32 26 / 0.08);
+}
+
+.dr-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--line-2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dr-avatar.big {
+  width: 56px;
+  height: 56px;
+  font-size: 19px;
+}
+
+.dr-avatar.lv-good {
+  background: var(--green-soft);
+  color: var(--green-strong);
+}
+
+.dr-avatar.lv-watch {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.dr-avatar.lv-low {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.dr-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dr-row-text span {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dr-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.dr-pct {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dr-pct.lv-good,
+.dr-big.lv-good {
+  color: var(--green-strong);
+}
+
+.dr-pct.lv-watch,
+.dr-big.lv-watch {
+  color: var(--amber);
+}
+
+.dr-pct.lv-low,
+.dr-big.lv-low {
+  color: var(--red);
+}
+
+.dr-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+.dr-spark span {
+  width: 5px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.dr-spark .lv-good {
+  background: #6cc39a;
+}
+
+.dr-spark .lv-watch {
+  background: #e3a73c;
+}
+
+.dr-spark .lv-low {
+  background: #e0685a;
+}
+
+.dr-detail {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px 28px;
+}
+
+.dr-back {
+  display: none;
+}
+
+.rot-back {
+  transform: rotate(180deg);
+}
+
+.dr-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.dr-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.dr-head p {
+  color: var(--ink-2);
+}
+
+.dr-followers {
+  font-size: 13px;
+}
+
+.dr-sample {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 13px;
+}
+
+.dr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.dr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line-2);
+}
+
+.dr-panel h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+}
+
+.dr-adh {
+  grid-column: 1 / -1;
+}
+
+.dr-adh-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dr-big {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dr-adh-text {
+  font-weight: 600;
+}
+
+.dr-adh-text span {
+  display: block;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.dr-attn {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dr-attn li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dr-attn .icon {
+  color: var(--red);
+  margin-top: 1px;
+}
+
+.dr-calm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--green-strong);
+}
+
+.dr-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dr-primary {
+  min-height: 40px;
+  background: var(--dr);
+  border-color: var(--dr);
+  color: #fff;
+}
+
+.dr-meds {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dr-meds li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.dr-meds li + li {
+  border-top: 1px solid var(--line-2);
+}
+
+.dr-meds li.inactive {
+  opacity: 0.55;
+}
+
+.dr-med-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dr-med-text span {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.dr-link {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--dr);
+}
+
+.dr-link:hover {
+  background: var(--blue-soft);
+}
+
+.dr-hint {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.dr-advice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dr-chip {
+  justify-content: flex-start;
+  min-height: 38px;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 10px;
+  border-color: var(--line-2);
+  background: #f6f7fa;
+}
+
+.dr-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dr-compose textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  font: inherit;
+  resize: vertical;
+}
+
+.dr-compose textarea:focus {
+  outline: none;
+  border-color: var(--dr);
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+
+.dr-compose button {
+  align-self: flex-end;
+}
+
+.dr-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dr-notes li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f6f7fa;
+}
+
+.dr-notes span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.dr-notes span.ok {
+  color: var(--green-strong);
+}
+
+.dr .sheet-backdrop {
+  justify-content: center;
+}
+
+.dr .sheet {
+  max-width: 520px;
+}
+
+/* Tablette étroite ou téléphone : liste puis dossier, avec retour. */
+@container (max-width: 720px) {
+  .dr {
+    display: block;
+    overflow: hidden;
+  }
+
+  .dr-list,
+  .dr-detail {
+    height: 100%;
+  }
+
+  .dr-show-list .dr-detail,
+  .dr-show-detail .dr-list {
+    display: none;
+  }
+
+  .dr-back {
+    display: inline-flex;
+    margin: 0 0 10px -8px;
+    border: 0;
+    background: transparent;
+    color: var(--dr);
+  }
+
+  .dr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======================= Messages ======================= */
+
+.p-note {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--card);
+  border: 3px solid var(--fg);
+}
+
+.p-note-from {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  font-weight: 800;
+  font-size: 0.9em;
+}
+
+.p-note-text {
+  font-size: 1.05em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.cg-note {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--blue-soft);
+}
+
+.cg-note-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.cg-notes {
+  margin-bottom: 6px;
+}
+
+.cg-week {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cg-week-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.cg-week-title span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+@media (max-width: 1180px) {
+  .device-tablet .device-body {
+    width: calc(100vw - 360px);
+    min-width: 560px;
+  }
+}
+
+@media (max-width: 960px) {
+  .device-tablet .device-body {
+    width: calc(100vw - 40px);
+    min-width: 0;
+  }
+
+  .view-medecin .side {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .device-tablet .device-body {
+    width: 100%;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .device-tablet .device-glass {
+    border-radius: 0;
+  }
+
+  .view-medecin .side.open {
+    display: flex;
+  }
+}
+
+.dr-big {
+  white-space: nowrap;
+}
+
+@container (max-width: 520px) {
+  .dr-adh-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .wk-row-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .wk-lid {
+    margin-right: 0;
+  }
+
+  .wk {
+    border-spacing: 3px;
+  }
+
+  .wk-cell {
+    min-width: 0;
+  }
+
+  .dr-detail {
+    padding: 16px 14px 24px;
+  }
+}
+
+.p-note .p-row .p-btn {
+  font-size: 0.85em;
+}
+
+/* Cibles tactiles d'au moins 44 px partout (WCAG 2.5.5). */
+.dr-link,
+.dr-chip,
+.chips button,
+.small-btn {
+  min-height: 44px;
 }

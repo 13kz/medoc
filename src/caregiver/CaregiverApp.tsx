@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
+import { WeekBox } from '../components/WeekBox'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
-import { MOMENTS, dosesForDay, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
+import { MOMENTS, adherence, dosesForDay, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { DisplayMode, DoseStatus, Medication } from '../lib/types'
 import { MedEditor } from './MedEditor'
@@ -46,6 +47,8 @@ export function CaregiverApp() {
   const late = doses.filter((d) => d.status === 'en-retard')
   const next = nextUpcoming(doses)
   const activeMeds = state.medications.filter((m) => m.active).length
+  const week = weekGrid(state, now)
+  const pctWeek = adherence(week)
 
   // Bandeau façon notification push quand une nouvelle alerte arrive.
   useEffect(() => {
@@ -78,7 +81,7 @@ export function CaregiverApp() {
             <Icon name="alert" size={18} stroke={2.4} />
           </span>
           <span className="cg-banner-text">
-            <span className="cg-banner-app">Medoc · maintenant</span>
+            <span className="cg-banner-app">Medoc, maintenant</span>
             <span>{banner}</span>
           </span>
         </button>
@@ -91,7 +94,7 @@ export function CaregiverApp() {
         <div className="cg-head-text">
           <h1>{state.patient.name}</h1>
           <p>
-            {MODE_LABEL[state.patient.displayMode]} · {activeMeds} médicament{activeMeds > 1 ? 's' : ''}
+            {activeMeds} médicament{activeMeds > 1 ? 's' : ''}, affichage {MODE_LABEL[state.patient.displayMode].toLowerCase()}
           </p>
         </div>
         <button className="cg-bell" aria-label={`Alertes${unread ? `, ${unread} non lue${unread > 1 ? 's' : ''}` : ''}`} onClick={() => setTab('alertes')}>
@@ -103,20 +106,38 @@ export function CaregiverApp() {
       <div className="cg-content">
         {tab === 'jour' && (
           <section aria-label="Aujourd’hui" className="cg-stack">
-            <div className="cg-hero">
-              <div className="cg-ring" style={{ '--p': doses.length ? done / doses.length : 0 } as CSSProperties}>
-                <span>
-                  <strong>{done}</strong>/{doses.length}
-                </span>
-              </div>
-              <div className="cg-hero-text">
-                <p className="cg-hero-title">{done === doses.length && doses.length > 0 ? 'Tout est pris' : 'prises faites aujourd’hui'}</p>
-                <p>
-                  {next
-                    ? `Prochaine : ${spokenTime(next.time)}, ${next.med.name} (dans ${formatDuration(next.at - now)})`
-                    : 'Plus rien de prévu aujourd’hui'}
+            <div className="cg-summary">
+              <p className="cg-summary-title">
+                {doses.length === 0
+                  ? 'Aucune prise aujourd’hui'
+                  : done === doses.length
+                    ? 'Tout est pris aujourd’hui'
+                    : `${done} prise${done > 1 ? 's' : ''} sur ${doses.length} aujourd’hui`}
+              </p>
+              {next && (
+                <p className="cg-summary-next">
+                  Prochaine à {spokenTime(next.time)} : {next.med.name}, dans {formatDuration(next.at - now)}
                 </p>
-              </div>
+              )}
+              <ol className="cg-box" aria-label="Pilulier du jour">
+                {MOMENTS.map((m) => {
+                  const items = doses.filter((d) => momentOf(d.time) === m.id)
+                  if (items.length === 0) return null
+                  const taken = items.filter((d) => d.status === 'pris').length
+                  const isLate = items.some((d) => d.status === 'en-retard')
+                  return (
+                    <li key={m.id} className={`cg-cell ${taken === items.length ? 'full' : ''} ${isLate ? 'late' : ''}`} style={{ '--lid': m.tone } as CSSProperties}>
+                      <span className="cg-cell-lid">
+                        <Icon name={taken === items.length ? 'check' : m.icon} size={18} stroke={2.4} />
+                      </span>
+                      <span className="cg-cell-name">{m.label}</span>
+                      <span className="cg-cell-count">
+                        {taken}/{items.length}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
             </div>
 
             {late.length > 0 && (
@@ -131,54 +152,67 @@ export function CaregiverApp() {
               </div>
             )}
 
-            {MOMENTS.map((m) => {
-              const items = doses.filter((d) => momentOf(d.time) === m.id)
-              if (items.length === 0) return null
-              return (
-                <div key={m.id} className="cg-moment">
-                  <h2>
-                    <Icon name={m.icon} size={18} />
-                    {m.label}
-                  </h2>
-                  <ul className="cg-list">
-                    {items.map((d) => (
-                      <li key={d.key} className={`cg-dose st-${d.status}`}>
-                        <span className="cg-time">{d.time}</span>
-                        <Pill med={d.med} size="sm" />
-                        <span className="cg-dose-text">
-                          <strong>{d.med.name}</strong>
-                          <span className="cg-meta">
-                            {d.med.dose}
-                            {d.intake && ` · ${d.intake.by === 'patient' ? 'confirmé' : 'validé par vous'} à ${formatTime(Date.parse(d.intake.takenAt))}`}
-                            {d.status === 'reporte' && d.snoozedUntil && ` · rappel à ${formatTime(d.snoozedUntil)}`}
+            <ol className="cg-timeline">
+              {MOMENTS.map((m) => {
+                const items = doses.filter((d) => momentOf(d.time) === m.id)
+                if (items.length === 0) return null
+                return (
+                  <li key={m.id} className="cg-moment" style={{ '--lid': m.tone } as CSSProperties}>
+                    <h2>
+                      <span className="cg-moment-lid">
+                        <Icon name={m.icon} size={16} stroke={2.4} />
+                      </span>
+                      {m.label}
+                    </h2>
+                    <ul className="cg-rows">
+                      {items.map((d) => (
+                        <li key={d.key} className={`cg-dose st-${d.status}`}>
+                          <span className="cg-time">{d.time}</span>
+                          <Pill med={d.med} size="sm" />
+                          <span className="cg-dose-text">
+                            <strong>{d.med.name}</strong>
+                            <span className="cg-meta">
+                              <span className={`cg-state st-${d.status}`}>{STATUS_LABEL[d.status]}</span>
+                              {d.intake
+                                ? ` à ${formatTime(Date.parse(d.intake.takenAt))}${d.intake.by === 'aidant' ? ', validé par vous' : ''}`
+                                : d.status === 'reporte' && d.snoozedUntil
+                                  ? `, rappel à ${formatTime(d.snoozedUntil)}`
+                                  : `, ${d.med.dose}`}
+                            </span>
                           </span>
-                          <span className={`chip st-${d.status}`}>{STATUS_LABEL[d.status]}</span>
-                        </span>
-                        {d.status === 'pris' ? (
-                          <button
-                            className="cg-act done"
-                            aria-label={`Annuler la prise de ${d.med.name}`}
-                            title="Annuler"
-                            onClick={() => dispatch({ type: 'untake', doseKey: d.key })}
-                          >
-                            <Icon name="check" size={20} stroke={3} />
-                          </button>
-                        ) : (
-                          <button
-                            className="cg-act"
-                            aria-label={`Valider la prise de ${d.med.name}`}
-                            title="Valider la prise"
-                            onClick={() => dispatch({ type: 'take', doseKey: d.key, by: 'aidant', at: now })}
-                          >
-                            <Icon name="check" size={20} stroke={2.4} />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
+                          {d.status === 'pris' ? (
+                            <button
+                              className="cg-act done"
+                              aria-label={`Annuler la prise de ${d.med.name}`}
+                              title="Annuler"
+                              onClick={() => dispatch({ type: 'untake', doseKey: d.key })}
+                            >
+                              <Icon name="check" size={20} stroke={3} />
+                            </button>
+                          ) : (
+                            <button
+                              className="cg-act"
+                              aria-label={`Valider la prise de ${d.med.name}`}
+                              title="Valider la prise"
+                              onClick={() => dispatch({ type: 'take', doseKey: d.key, by: 'aidant', at: now })}
+                            >
+                              <Icon name="check" size={20} stroke={2.4} />
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                )
+              })}
+            </ol>
+            <section className="cg-week" aria-label="Cette semaine">
+              <h2 className="cg-week-title">
+                Cette semaine
+                <span>{pctWeek === null ? '' : `${Math.round(pctWeek * 100)} % des prises faites`}</span>
+              </h2>
+              <WeekBox week={week} caption={`Semainier de ${state.patient.name} sur 7 jours`} />
+            </section>
             {doses.length === 0 && <p className="cg-empty">Aucune prise prévue. Ajoutez des médicaments dans l’ordonnance.</p>}
           </section>
         )}
@@ -201,7 +235,7 @@ export function CaregiverApp() {
                       <strong>{m.name}</strong>
                       <span className="cg-meta">
                         {m.dose}
-                        {m.instructions && ` · ${m.instructions}`}
+                        {m.instructions && `, ${m.instructions.charAt(0).toLowerCase()}${m.instructions.slice(1)}`}
                       </span>
                       <span className="cg-times">
                         {m.active ? (
@@ -225,7 +259,25 @@ export function CaregiverApp() {
 
         {tab === 'alertes' && (
           <section aria-label="Alertes" className="cg-stack">
-            <h2 className="cg-title">Alertes</h2>
+            <h2 className="cg-title">Alertes et messages</h2>
+            {state.notes.length > 0 && (
+              <ul className="cg-list cg-notes">
+                {state.notes.map((n) => (
+                  <li key={n.id} className="cg-note">
+                    <span className="cg-note-icon">
+                      <Icon name="stethoscope" size={18} stroke={2.2} />
+                    </span>
+                    <span className="cg-dose-text">
+                      <strong>{n.from}</strong>
+                      <span>{n.text}</span>
+                      <span className="cg-meta">
+                        {formatTime(Date.parse(n.at))}, {n.acknowledged ? `${state.patient.name} l’a lu` : `pas encore lu par ${state.patient.name}`}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="cg-help">
               Une alerte part quand une prise a plus de {state.settings.lateAfterMin} minutes de retard. {state.patient.name} reçoit un rappel, et les
               proches qui ont activé les alertes sont prévenus.
@@ -239,7 +291,7 @@ export function CaregiverApp() {
                   <span className="cg-dose-text">
                     <strong>{a.message}</strong>
                     <span className="cg-meta">
-                      {formatTime(Date.parse(a.at))} · envoyé à {a.recipients.join(', ')}
+                      {formatTime(Date.parse(a.at))}, envoyée à {a.recipients.join(', ')}
                     </span>
                   </span>
                 </li>

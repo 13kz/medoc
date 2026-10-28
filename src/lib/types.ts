@@ -20,7 +20,12 @@ export interface Medication {
 export type DisplayMode = 'voix' | 'malvoyant' | 'standard'
 
 export interface Patient {
+  /** Nom affiché sur son téléphone et chez l'aidant (« Maman »). */
   name: string
+  /** Identité civile, vue par le médecin. */
+  fullName: string
+  age: number
+  conditions: string[]
   displayMode: DisplayMode
   /** Tutoyer le patient dans les messages lus et affichés. */
   tutoiement: boolean
@@ -69,8 +74,18 @@ export interface Clock {
   anchorMs: number
 }
 
+/** Message du médecin au patient et à ses proches. */
+export interface Note {
+  id: string
+  at: string
+  from: string
+  text: string
+  /** Le patient a confirmé avoir lu ou entendu le message. */
+  acknowledged: boolean
+}
+
 export interface AppState {
-  version: 1
+  version: 2
   patient: Patient
   medications: Medication[]
   contacts: Contact[]
@@ -80,6 +95,7 @@ export interface AppState {
   /** Reports en cours, indexés par clé de dose, valeur = ISO de fin. */
   snoozes: Record<string, string>
   alerts: Alert[]
+  notes: Note[]
   clock: Clock
 }
 

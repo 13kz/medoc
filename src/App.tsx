@@ -6,16 +6,17 @@ import { Icon } from './components/Icon'
 import { useNow } from './lib/clock'
 import { dosesForDay, spokenTime } from './lib/schedule'
 import { StoreProvider, useStore } from './lib/store'
+import { DoctorApp } from './doctor/DoctorApp'
 import { PatientApp } from './patient/PatientApp'
 
-type View = 'patient' | 'aidant' | 'both'
+type View = 'patient' | 'aidant' | 'medecin' | 'both'
 
 const VIEW_KEY = 'medoc:view'
 
 function readView(): View {
   try {
     const v = localStorage.getItem(VIEW_KEY)
-    if (v === 'patient' || v === 'aidant' || v === 'both') return v
+    if (v === 'patient' || v === 'aidant' || v === 'medecin' || v === 'both') return v
   } catch {
     // Pas de stockage : vue par défaut.
   }
@@ -76,10 +77,10 @@ function Shell() {
           </span>
           <div>
             <strong>Medoc</strong>
-            <span className="shell-sub">Prototype · deux téléphones</span>
+            <span className="shell-sub">Un appareil par rôle</span>
           </div>
         </div>
-        <nav className="switcher" aria-label="Choisir le téléphone">
+        <nav className="switcher" aria-label="Choisir l’appareil">
           <button aria-pressed={view === 'patient'} onClick={() => setView('patient')}>
             <Icon name="phone" size={18} />
             <span>
@@ -93,8 +94,13 @@ function Shell() {
             <span className="sw-short">Aidant</span>
             {unread > 0 && <span className="badge">{unread}</span>}
           </button>
+          <button aria-pressed={view === 'medecin'} onClick={() => setView('medecin')}>
+            <Icon name="stethoscope" size={18} />
+            <span className="sw-long">Tablette du médecin</span>
+            <span className="sw-short">Médecin</span>
+          </button>
           <button className="only-wide" aria-pressed={view === 'both'} onClick={() => setView('both')}>
-            Les deux
+            Patiente et aidant
           </button>
         </nav>
         <button className="clock-toggle only-narrow" onClick={() => setClockOpen((o) => !o)} aria-expanded={clockOpen}>
@@ -113,17 +119,25 @@ function Shell() {
               <li>Avancez l’horloge : à 8 h, le téléphone sonne et lit les médicaments.</li>
               <li>Touchez « J’ai pris », ou laissez passer 30 min pour déclencher l’alerte.</li>
               <li>Basculez sur le téléphone de l’aidant pour voir le suivi et modifier l’ordonnance.</li>
+              <li>Ouvrez la tablette du médecin : la semaine de chaque patient, et un conseil à envoyer.</li>
             </ol>
             <p className="muted">Ordonnance fictive. Les données restent dans ce navigateur.</p>
           </section>
         </aside>
 
         <div className="devices">
-          <DeviceFrame label={`Téléphone de ${state.patient.name}`} hidden={view === 'aidant'} variant={`patient-${state.patient.displayMode}`}>
+          <DeviceFrame
+            label={`Téléphone de ${state.patient.name}`}
+            hidden={view !== 'patient' && view !== 'both'}
+            variant={`patient-${state.patient.displayMode}`}
+          >
             <PatientApp />
           </DeviceFrame>
-          <DeviceFrame label="Téléphone de l’aidant" hidden={view === 'patient'} variant="aidant">
+          <DeviceFrame label="Téléphone de l’aidant" hidden={view !== 'aidant' && view !== 'both'} variant="aidant">
             <CaregiverApp />
+          </DeviceFrame>
+          <DeviceFrame label="Tablette du médecin" hidden={view !== 'medecin'} variant="tablet">
+            <DoctorApp />
           </DeviceFrame>
         </div>
       </main>

@@ -40,13 +40,19 @@ export function formatDuration(ms: number): string {
 
 export type Moment = 'matin' | 'midi' | 'apres-midi' | 'soir' | 'nuit'
 
-export const MOMENTS: { id: Moment; label: string; icon: IconName }[] = [
-  { id: 'matin', label: 'Matin', icon: 'sunrise' },
-  { id: 'midi', label: 'Midi', icon: 'sun' },
-  { id: 'apres-midi', label: 'Après-midi', icon: 'sun' },
-  { id: 'soir', label: 'Soir', icon: 'sunset' },
-  { id: 'nuit', label: 'Coucher', icon: 'moon' },
+/**
+ * Les moments de la journée, avec la couleur de couvercle d'un pilulier classique.
+ * Ces teintes claires gardent un contraste fort avec du texte noir, sur fond noir comme sur fond clair.
+ */
+export const MOMENTS: { id: Moment; label: string; icon: IconName; tone: string }[] = [
+  { id: 'matin', label: 'Matin', icon: 'sunrise', tone: '#ffd43b' },
+  { id: 'midi', label: 'Midi', icon: 'sun', tone: '#ff9f43' },
+  { id: 'apres-midi', label: 'Après-midi', icon: 'sun', tone: '#7fd6a4' },
+  { id: 'soir', label: 'Soir', icon: 'sunset', tone: '#6cb4ff' },
+  { id: 'nuit', label: 'Coucher', icon: 'moon', tone: '#b69cff' },
 ]
+
+export const momentInfo = (hhmm: string) => MOMENTS.find((m) => m.id === momentOf(hhmm))!
 
 export function momentOf(hhmm: string): Moment {
   const h = Number(hhmm.split(':')[0])
@@ -68,14 +74,19 @@ export const FORMS: { id: MedForm; label: string }[] = [
 
 /** Toutes les prises du jour, triées par heure, avec leur statut à l'instant `now`. */
 export function dosesForDay(state: AppState, now: number): Dose[] {
-  const day = dayKey(now)
+  return dosesOn(state, now, now)
+}
+
+/** Les prises d'un jour donné (`dayMs`), avec leur statut vu à l'instant `now`. */
+export function dosesOn(state: AppState, dayMs: number, now: number): Dose[] {
+  const day = dayKey(dayMs)
   const lateMs = state.settings.lateAfterMin * 60000
   const doses: Dose[] = []
   for (const med of state.medications) {
     if (!med.active) continue
     for (const time of med.times) {
       const key = doseKey(day, med.id, time)
-      const at = atTime(now, time)
+      const at = atTime(dayMs, time)
       if (med.since && at < Date.parse(med.since)) continue
       const intake = state.intakes[key]
       const snoozeIso = state.snoozes[key]
@@ -98,3 +109,73 @@ export const pendingNow = (doses: Dose[]) =>
 
 export const nextUpcoming = (doses: Dose[]) =>
   doses.find((d) => d.status === 'a-venir' || d.status === 'reporte')
+
+export interface WeekCell {
+  moment: Moment
+  total: number
+  taken: number
+  missed: number
+}
+
+export interface WeekDay {
+  day: number
+  label: string
+  isToday: boolean
+  cells: WeekCell[]
+}
+
+const WEEKDAY = new Intl.DateTimeFormat('fr-FR', { weekday: 'short' })
+
+/** Le semainier des 7 derniers jours : pour chaque jour et chaque moment, ce qui a été pris ou oublié. */
+export function weekGrid(state: AppState, now: number): WeekDay[] {
+  const days: WeekDay[] = []
+  for (let ago = 6; ago >= 0; ago--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - ago)
+    const doses = dosesOn(state, d.getTime(), now)
+    days.push({
+      day: d.getTime(),
+      label: ago === 0 ? 'Auj.' : WEEKDAY.format(d).replace('.', ''),
+      isToday: ago === 0,
+      cells: MOMENTS.map((m) => {
+        const items = doses.filter((x) => momentOf(x.time) === m.id)
+        return {
+          moment: m.id,
+          total: items.length,
+          taken: items.filter((x) => x.status === 'pris').length,
+          missed: items.filter((x) => x.status === 'en-retard').length,
+        }
+      }),
+    })
+  }
+  return days
+}
+
+/** Part des prises faites parmi celles qui étaient dues, sur la semaine. */
+export function adherence(week: WeekDay[]): number | null {
+  let taken = 0
+  let due = 0
+  for (const d of week)
+    for (const c of d.cells) {
+      taken += c.taken
+      due += c.taken + c.missed
+    }
+  return due === 0 ? null : taken / due
+}
+
+/** Les médicaments les plus souvent oubliés sur 7 jours. */
+export function missedByMed(state: AppState, now: number): { med: AppState['medications'][number]; time: string; count: number }[] {
+  const counts = new Map<string, { med: AppState['medications'][number]; time: string; count: number }>()
+  for (let ago = 6; ago >= 0; ago--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - ago)
+    for (const dose of dosesOn(state, d.getTime(), now)) {
+      if (dose.status !== 'en-retard') continue
+      const k = `${dose.med.id}|${dose.time}`
+      const entry = counts.get(k) ?? { med: dose.med, time: dose.time, count: 0 }
+      entry.count++
+      counts.set(k, entry)
+    }
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count)
+}

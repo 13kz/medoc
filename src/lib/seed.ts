@@ -1,4 +1,5 @@
-import type { AppState } from './types'
+import { dayKey, doseKey } from './schedule'
+import type { AppState, Intake } from './types'
 
 /** Décalage pour que la démo commence à 7 h 55 aujourd'hui, juste avant la première prise. */
 export function offsetTo(hhmm: string, real = Date.now()): number {
@@ -11,10 +12,13 @@ export function offsetTo(hhmm: string, real = Date.now()): number {
 /** Ordonnance d'exemple (fictive) pour une personne diabétique de type 2 avec un glaucome. */
 export function seedState(): AppState {
   const real = Date.now()
-  return {
-    version: 1,
+  const state: AppState = {
+    version: 2,
     patient: {
       name: 'Maman',
+      fullName: 'Mireille Benali',
+      age: 78,
+      conditions: ['Diabète de type 2', 'Glaucome', 'Hypertension'],
       displayMode: 'malvoyant',
       tutoiement: true,
       autoRead: true,
@@ -90,6 +94,32 @@ export function seedState(): AppState {
     intakes: {},
     snoozes: {},
     alerts: [],
+    notes: [],
     clock: { offsetMs: offsetTo('07:55', real), speed: 1, anchorMs: real },
   }
+  state.intakes = pastWeek(state, real + state.clock.offsetMs)
+  return state
+}
+
+/**
+ * Six jours d'historique fictif, pour que le médecin et l'aidant voient une semaine réaliste :
+ * le collyre du soir et l'insuline du coucher sont parfois oubliés, le reste est bien suivi.
+ */
+function pastWeek(state: AppState, now: number): Record<string, Intake> {
+  const missed = new Set(['1|collyre', '3|collyre', '4|collyre', '3|lantus', '5|metformine|19:30', '2|kardegic'])
+  const intakes: Record<string, Intake> = {}
+  for (let ago = 1; ago <= 6; ago++) {
+    const day = new Date(now)
+    day.setDate(day.getDate() - ago)
+    for (const med of state.medications) {
+      for (const time of med.times) {
+        if (missed.has(`${ago}|${med.id}`) || missed.has(`${ago}|${med.id}|${time}`)) continue
+        const [h, m] = time.split(':').map(Number)
+        const at = new Date(day)
+        at.setHours(h, m + ((ago * 7 + h) % 23), 0, 0)
+        intakes[doseKey(dayKey(day.getTime()), med.id, time)] = { takenAt: at.toISOString(), by: 'patient' }
+      }
+    }
+  }
+  return intakes
 }

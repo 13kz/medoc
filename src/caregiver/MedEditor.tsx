@@ -61,6 +61,7 @@ export function MedEditor({
         aria-modal="true"
         aria-label={med ? 'Modifier le médicament' : 'Ajouter un médicament'}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
         onSubmit={(e) => {
           e.preventDefault()
           if (valid) onSave({ ...draft, name: draft.name.trim(), times, instructions: draft.instructions?.trim() || undefined })

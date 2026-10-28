@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNow } from '../lib/clock'
 import { announce, daySummary, describeDose, tv } from '../lib/phrases'
 import {
@@ -11,7 +11,7 @@ import {
   stopSpeaking,
   vibrate,
 } from '../lib/platform'
-import { MOMENTS, dosesForDay, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
+import { MOMENTS, dosesForDay, momentInfo, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { Dose, DoseStatus } from '../lib/types'
 import { Icon } from '../components/Icon'
@@ -113,6 +113,16 @@ export function PatientApp() {
   }
 
   const current = pending[0]
+  const note = state.notes.find((n) => !n.acknowledged)
+
+  // Un nouveau message du médecin est annoncé et lu, comme une prise.
+  const lastNote = useRef(note?.id)
+  useEffect(() => {
+    if (!unlocked || !note || note.id === lastNote.current) return
+    lastNote.current = note.id
+    chime()
+    setTimeout(() => say(`Message de ${note.from}. ${note.text}`), 900)
+  }, [note?.id, unlocked])
   const done = doses.filter((d) => d.status === 'pris').length
 
   const moments = MOMENTS.map((m) => {
@@ -122,8 +132,12 @@ export function PatientApp() {
     return { ...m, items, state }
   }).filter((m) => m.state !== null)
 
+  // Tout l'écran prend la couleur du compartiment en cours, comme le couvercle du pilulier.
+  const focusMoment = momentInfo((current ?? next)?.time ?? '08:00')
+  const compartment = current ? pending.filter((d) => momentOf(d.time) === momentOf(current.time)) : []
+
   return (
-    <div className={`patient mode-${mode}`}>
+    <div className={`patient mode-${mode}`} style={{ '--tone': focusMoment.tone } as CSSProperties}>
       {!unlocked && (
         <button className="unlock" onClick={unlock}>
           <span className="unlock-ring">
@@ -135,53 +149,99 @@ export function PatientApp() {
       )}
 
       <header className="p-head">
-        <p className="p-hello">Bonjour {patient.name}</p>
         <p className="p-clock">{formatTime(now)}</p>
-        <p className="p-date">{DATE_FMT.format(now)}</p>
+        <p className="p-date">
+          {(() => {
+            const d = DATE_FMT.format(now)
+            return d.charAt(0).toUpperCase() + d.slice(1)
+          })()}
+          <span className="p-hello">Bonjour {patient.name}</span>
+        </p>
       </header>
 
       {!voiceFirst && moments.length > 0 && (
         <ol className="pillbox" aria-label="Mon pilulier du jour">
-          {moments.map((m) => (
-            <li key={m.id} className={`pb-cell pb-${m.state}`}>
-              <span className="pb-icon">
-                <Icon name={m.state === 'done' ? 'check' : m.icon} size="100%" stroke={m.state === 'done' ? 3 : 2} />
-              </span>
-              <span className="pb-label">{m.label}</span>
-              <span className="sr-only">
-                {m.state === 'done' ? 'tout est pris' : m.state === 'late' ? 'en retard' : m.state === 'now' ? 'à prendre maintenant' : 'plus tard'}
-              </span>
-            </li>
-          ))}
+          {moments.map((m) => {
+            const taken = m.items.filter((d) => d.status === 'pris').length
+            return (
+              <li key={m.id} className={`pb-cell pb-${m.state}`} style={{ '--lid': m.tone } as CSSProperties}>
+                <span className="pb-lid">
+                  <Icon name={m.state === 'done' ? 'check' : m.icon} size="100%" stroke={m.state === 'done' ? 3.2 : 2.2} />
+                </span>
+                <span className="pb-label">{m.label}</span>
+                <span className="pb-dots" aria-hidden="true">
+                  {m.items.map((d) => (
+                    <span key={d.key} className={d.status === 'pris' ? 'on' : ''} />
+                  ))}
+                </span>
+                <span className="sr-only">
+                  {taken} sur {m.items.length} pris
+                  {m.state === 'late' ? ', en retard' : m.state === 'now' ? ', à prendre maintenant' : ''}
+                </span>
+              </li>
+            )
+          })}
         </ol>
+      )}
+
+      {note && (
+        <section className="p-note" aria-label={`Message de ${note.from}`}>
+          <p className="p-note-from">
+            <Icon name="stethoscope" size="1.2em" />
+            Message de {note.from}
+          </p>
+          <p className="p-note-text">{note.text}</p>
+          <div className="p-row">
+            <button className="p-btn p-sec" onClick={() => say(`Message de ${note.from}. ${note.text}`)}>
+              <Icon name="speaker" size="1.2em" />
+              Écouter
+            </button>
+            <button
+              className="p-btn p-sec"
+              onClick={() => {
+                dispatch({ type: 'ackNote', id: note.id })
+                say('D’accord.')
+              }}
+            >
+              <Icon name="check" size="1.2em" stroke={2.8} />
+              J’ai compris
+            </button>
+          </div>
+        </section>
       )}
 
       {current ? (
         <section className={`p-now ${current.status === 'en-retard' ? 'late' : 'due'}`} aria-label="Médicament à prendre maintenant">
-          <div className="p-now-top">
-            <p className="p-kicker">
-              <Icon name={current.status === 'en-retard' ? 'alert' : 'bell'} size="1.1em" stroke={2.4} />
-              {current.status === 'en-retard' ? 'En retard' : 'C’est l’heure'}
-              <span className="p-kicker-time">{spokenTime(current.time)}</span>
-            </p>
-            {pending.length > 1 && (
-              <p className="p-steps" aria-label={`Médicament 1 sur ${pending.length}`}>
-                {pending.map((d, i) => (
-                  <span key={d.key} className={i === 0 ? 'on' : ''} />
-                ))}
-              </p>
-            )}
+          <div className="p-lid">
+            <Icon name={current.status === 'en-retard' ? 'alert' : momentInfo(current.time).icon} size="1.25em" stroke={2.4} />
+            <span className="p-lid-text">
+              {current.status === 'en-retard' ? 'Pas encore pris' : 'C’est l’heure'}
+              <span>
+                {momentInfo(current.time).label}, {spokenTime(current.time)}
+              </span>
+            </span>
           </div>
-          <div className="p-med">
-            {!voiceFirst && <Pill med={current.med} size="xl" />}
-            <h1 className="p-name">{current.med.name}</h1>
-            <p className="p-dose">{current.med.dose}</p>
-            {current.med.instructions && (
-              <p className="p-instr">
-                <Icon name="info" size="1.1em" />
-                {current.med.instructions}
-              </p>
+          <div className="p-box">
+            {!voiceFirst && compartment.length > 1 && (
+              <div className="p-tray" role="group" aria-label={`${compartment.length} médicaments dans ce compartiment`}>
+                {compartment.map((d) => (
+                  <span key={d.key} className={d.key === current.key ? 'on' : ''}>
+                    <Pill med={d.med} size="md" />
+                  </span>
+                ))}
+              </div>
             )}
+            <div className="p-med">
+              {!voiceFirst && compartment.length <= 1 && <Pill med={current.med} size="xl" />}
+              <h1 className="p-name">{current.med.name}</h1>
+              <p className="p-dose">{current.med.dose}</p>
+              {current.med.instructions && (
+                <p className="p-instr">
+                  <Icon name="info" size="1.1em" />
+                  {current.med.instructions}
+                </p>
+              )}
+            </div>
           </div>
           <div className="p-actions">
             <button className="p-btn p-take" onClick={() => take(current)}>
@@ -217,10 +277,10 @@ export function PatientApp() {
               <Pill med={next.med} size="md" />
               <div>
                 <p className="p-next-when">
-                  Prochaine prise à <strong>{spokenTime(next.time)}</strong>
+                  {momentInfo(next.time).label}, à <strong>{spokenTime(next.time)}</strong>
                 </p>
                 <p className="p-next-what">
-                  {next.med.name} · dans {formatDuration(next.at - now)}
+                  {next.med.name}, dans {formatDuration(next.at - now)}
                 </p>
               </div>
             </div>
@@ -245,9 +305,9 @@ export function PatientApp() {
       {!voiceFirst && (
         <section className="p-day" aria-label="Ma journée">
           <button className="p-day-toggle" aria-expanded={showDay} onClick={() => setShowDay((s) => !s)}>
-            <span>Ma journée</span>
+            <span>Toute ma journée</span>
             <span className="p-progress">
-              {done} sur {doses.length}
+              {done} pris sur {doses.length}
               <Icon name="chevron" size="1em" className={showDay ? 'rot-up' : 'rot-down'} />
             </span>
           </button>
@@ -286,9 +346,11 @@ function DayList({ doses, onTake, onUntake }: { doses: Dose[]; onTake: (d: Dose)
         const items = doses.filter((d) => momentOf(d.time) === m.id)
         if (items.length === 0) return null
         return (
-          <div key={m.id} className="p-moment">
+          <div key={m.id} className="p-moment" style={{ '--lid': m.tone } as CSSProperties}>
             <h2>
-              <Icon name={m.icon} size="1.1em" />
+              <span className="p-moment-lid">
+                <Icon name={m.icon} size="1em" stroke={2.4} />
+              </span>
               {m.label}
             </h2>
             <ul>
@@ -302,9 +364,9 @@ function DayList({ doses, onTake, onUntake }: { doses: Dose[]; onTake: (d: Dose)
                       <span className="p-item-text">
                         <span className="p-item-name">{d.med.name}</span>
                         <span className="p-item-meta">
-                          {spokenTime(d.time)} · {d.med.dose}
-                          {d.status === 'en-retard' && ' · en retard'}
-                          {taken && d.intake && ` · pris à ${formatTime(Date.parse(d.intake.takenAt))}`}
+                          {d.med.dose}, {spokenTime(d.time)}
+                          {d.status === 'en-retard' && ', en retard'}
+                          {taken && d.intake && `, pris à ${formatTime(Date.parse(d.intake.takenAt))}`}
                         </span>
                       </span>
                       <Pill med={d.med} size="sm" />

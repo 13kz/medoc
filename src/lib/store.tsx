@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
 import { seedState } from './seed'
-import type { Alert, AppState, Contact, Medication, Patient, Settings } from './types'
+import type { Alert, AppState, Contact, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
 
@@ -16,6 +16,8 @@ export type Action =
   | { type: 'deleteContact'; id: string }
   | { type: 'addAlert'; alert: Alert }
   | { type: 'readAlerts' }
+  | { type: 'addNote'; note: Note }
+  | { type: 'ackNote'; id: string }
   | { type: 'clockJump'; deltaMs: number; realNow: number }
   | { type: 'clockSpeed'; speed: number; realNow: number }
   | { type: 'clockReset'; realNow: number }
@@ -78,6 +80,10 @@ function reducer(state: AppState, action: Action): AppState {
     case 'addAlert':
       if (state.alerts.some((a) => a.doseKey === action.alert.doseKey)) return state
       return { ...state, alerts: [action.alert, ...state.alerts].slice(0, 100) }
+    case 'addNote':
+      return { ...state, notes: [action.note, ...state.notes].slice(0, 50) }
+    case 'ackNote':
+      return { ...state, notes: state.notes.map((n) => (n.id === action.id ? { ...n, acknowledged: true } : n)) }
     case 'readAlerts':
       return { ...state, alerts: state.alerts.map((a) => ({ ...a, read: true })) }
     case 'clockJump':
@@ -103,7 +109,7 @@ function load(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as AppState
-      if (parsed.version === 1) return parsed
+      if (parsed.version === 2) return parsed
     }
   } catch {
     // Stockage indisponible (navigation privée, aperçu) : on repart des données d'exemple.
