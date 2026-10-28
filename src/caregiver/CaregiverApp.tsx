@@ -5,7 +5,7 @@ import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
-import { MOMENTS, adherence, dosesForDay, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
+import { MOMENTS, adherence, dosesForDay, rhythmLabel, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { DisplayMode, DoseStatus, Medication } from '../lib/types'
 import { MedEditor } from './MedEditor'
@@ -248,6 +248,7 @@ export function CaregiverApp() {
                         {m.dose}
                         {m.instructions && `, ${m.instructions.charAt(0).toLowerCase()}${m.instructions.slice(1)}`}
                       </span>
+                      {m.active && <span className="cg-meta">{rhythmLabel(m)}</span>}
                       <span className="cg-times">
                         {m.active ? (
                           [...m.times].sort().map((t) => (

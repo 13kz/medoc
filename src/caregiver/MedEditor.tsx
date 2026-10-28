@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
-import { FORMS } from '../lib/schedule'
-import type { MedForm, Medication } from '../lib/types'
+import { FORMS, addDays, dayKey } from '../lib/schedule'
+import type { MedForm, Medication, Rhythm } from '../lib/types'
 
 const QUICK_TIMES = [
   { label: 'Matin', time: '08:00' },
@@ -11,6 +11,19 @@ const QUICK_TIMES = [
   { label: 'Soir', time: '19:30' },
   { label: 'Coucher', time: '22:00' },
 ]
+
+/** Lundi d'abord, comme sur un semainier. */
+const WEEK = [
+  { d: 1, label: 'Lun' },
+  { d: 2, label: 'Mar' },
+  { d: 3, label: 'Mer' },
+  { d: 4, label: 'Jeu' },
+  { d: 5, label: 'Ven' },
+  { d: 6, label: 'Sam' },
+  { d: 0, label: 'Dim' },
+]
+
+const DURATIONS = [5, 7, 10, 14, 30]
 
 const COLORS = ['#ffffff', '#f2a33a', '#e64545', '#3fb37f', '#2f8fd8', '#8e5bd6', '#f5d33a', '#e8e1cf']
 
@@ -51,7 +64,13 @@ export function MedEditor({
   )
   const set = (patch: Partial<Medication>) => setDraft((d) => ({ ...d, ...patch }))
   const times = [...new Set(draft.times)].sort()
-  const valid = draft.name.trim() !== '' && draft.dose.trim() !== '' && times.length > 0
+  const today = dayKey(now)
+  const rhythm: Rhythm = draft.rhythm ?? { kind: 'daily' }
+  const setRhythm = (r: Rhythm) => set({ rhythm: r.kind === 'daily' ? undefined : r })
+  const validRhythm = rhythm.kind !== 'weekdays' || rhythm.days.length > 0
+  const validDates = !draft.startDate || !draft.endDate || draft.startDate <= draft.endDate
+  const valid = draft.name.trim() !== '' && draft.dose.trim() !== '' && times.length > 0 && validRhythm && validDates
+  const durationDays = draft.endDate ? Math.round((Date.parse(draft.endDate) - Date.parse(draft.startDate ?? today)) / 86400000) + 1 : null
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -153,6 +172,100 @@ export function MedEditor({
             <Icon name="plus" size={18} />
             Autre heure
           </button>
+        </fieldset>
+
+        <fieldset className="field">
+          <legend>Jours de prise</legend>
+          <div className="chips">
+            <button type="button" aria-pressed={rhythm.kind === 'daily'} onClick={() => setRhythm({ kind: 'daily' })}>
+              Tous les jours
+            </button>
+            <button
+              type="button"
+              aria-pressed={rhythm.kind === 'weekdays'}
+              onClick={() => rhythm.kind !== 'weekdays' && setRhythm({ kind: 'weekdays', days: [new Date(now).getDay()] })}
+            >
+              Certains jours
+            </button>
+            <button
+              type="button"
+              aria-pressed={rhythm.kind === 'interval'}
+              onClick={() => rhythm.kind !== 'interval' && setRhythm({ kind: 'interval', every: 2, from: draft.startDate ?? today })}
+            >
+              Un jour sur…
+            </button>
+          </div>
+          {rhythm.kind === 'weekdays' && (
+            <div className="chips week-chips" role="group" aria-label="Jours de la semaine">
+              {WEEK.map(({ d, label }) => {
+                const on = rhythm.days.includes(d)
+                return (
+                  <button
+                    type="button"
+                    key={d}
+                    aria-pressed={on}
+                    onClick={() => setRhythm({ kind: 'weekdays', days: on ? rhythm.days.filter((x) => x !== d) : [...rhythm.days, d] })}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {rhythm.kind === 'interval' && (
+            <div className="field-row">
+              <label className="field">
+                <span>Un jour sur</span>
+                <select value={rhythm.every} onChange={(e) => setRhythm({ ...rhythm, every: Number(e.target.value) })}>
+                  {[2, 3, 7, 14].map((n) => (
+                    <option key={n} value={n}>
+                      {n === 7 ? '7 (une fois par semaine)' : n === 14 ? '14 (toutes les deux semaines)' : n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>À compter du</span>
+                <input type="date" value={rhythm.from} onChange={(e) => e.target.value && setRhythm({ ...rhythm, from: e.target.value })} />
+              </label>
+            </div>
+          )}
+        </fieldset>
+
+        <fieldset className="field">
+          <legend>Durée du traitement</legend>
+          <div className="chips">
+            <button type="button" aria-pressed={!draft.endDate} onClick={() => set({ endDate: undefined })}>
+              Sans fin
+            </button>
+            {DURATIONS.map((n) => (
+              <button
+                type="button"
+                key={n}
+                aria-pressed={durationDays === n}
+                onClick={() => set({ startDate: draft.startDate ?? today, endDate: addDays(draft.startDate ?? today, n - 1) })}
+              >
+                {n === 30 ? '1 mois' : `${n} jours`}
+              </button>
+            ))}
+          </div>
+          <div className="field-row">
+            <label className="field">
+              <span>Début</span>
+              <input type="date" value={draft.startDate ?? ''} onChange={(e) => set({ startDate: e.target.value || undefined })} />
+            </label>
+            <label className="field">
+              <span>Dernier jour</span>
+              <input
+                type="date"
+                value={draft.endDate ?? ''}
+                min={draft.startDate}
+                aria-invalid={!validDates}
+                onChange={(e) => set({ endDate: e.target.value || undefined })}
+              />
+            </label>
+          </div>
+          {!validDates && <p className="field-error">Le dernier jour est avant le début.</p>}
         </fieldset>
 
         <label className="field">

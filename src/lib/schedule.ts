@@ -1,11 +1,68 @@
 import type { IconName } from '../components/Icon'
-import type { AppState, Dose, MedForm } from './types'
+import type { AppState, Dose, MedForm, Medication } from './types'
 
 export const pad = (n: number) => String(n).padStart(2, '0')
 
 export function dayKey(ms: number): string {
   const d = new Date(ms)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Numéro du jour (AAAA-MM-JJ) depuis 1970, insensible aux changements d'heure. */
+const dayNumber = (day: string) => {
+  const [y, m, d] = day.split('-').map(Number)
+  return Math.round(Date.UTC(y, m - 1, d) / 86400000)
+}
+
+/** Le médicament est-il à prendre ce jour-là (AAAA-MM-JJ), selon son rythme et sa durée ? */
+export function takesOn(med: Medication, day: string): boolean {
+  if (med.startDate && day < med.startDate) return false
+  if (med.endDate && day > med.endDate) return false
+  const r = med.rhythm
+  if (!r || r.kind === 'daily') return true
+  if (r.kind === 'weekdays') {
+    const [y, m, d] = day.split('-').map(Number)
+    return r.days.includes(new Date(y, m - 1, d).getDay())
+  }
+  const diff = dayNumber(day) - dayNumber(r.from)
+  return diff >= 0 && diff % Math.max(1, r.every) === 0
+}
+
+/** Dernier jour d'un traitement à durée limitée. */
+export const isLastDay = (med: Medication, day: string) => med.endDate === day
+
+/** Ajoute `n` jours à une date AAAA-MM-JJ. */
+export function addDays(day: string, n: number): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return dayKey(new Date(y, m - 1, d + n).getTime())
+}
+
+const WEEKDAY_SHORT = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.']
+const WEEKDAY_LONG = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+const DATE_SHORT = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
+
+export function shortDate(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return DATE_SHORT.format(new Date(y, m - 1, d))
+}
+
+/** « Tous les jours », « Le lundi et le jeudi », « Un jour sur 2 », suivi de la durée éventuelle. */
+export function rhythmLabel(med: Medication): string {
+  const r = med.rhythm
+  let label: string
+  if (!r || r.kind === 'daily') label = 'Tous les jours'
+  else if (r.kind === 'weekdays') {
+    const days = [...r.days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+    label =
+      days.length === 1
+        ? `Le ${WEEKDAY_LONG[days[0]]}`
+        : days.length === 7
+          ? 'Tous les jours'
+          : days.map((d) => WEEKDAY_SHORT[d]).join(', ')
+  } else label = r.every === 2 ? 'Un jour sur deux' : `Tous les ${r.every} jours`
+  if (med.endDate) label += `, jusqu’au ${shortDate(med.endDate)}`
+  else if (med.startDate) label += `, à partir du ${shortDate(med.startDate)}`
+  return label
 }
 
 export function doseKey(day: string, medId: string, time: string): string {
@@ -83,7 +140,7 @@ export function dosesOn(state: AppState, dayMs: number, now: number): Dose[] {
   const lateMs = state.settings.lateAfterMin * 60000
   const doses: Dose[] = []
   for (const med of state.medications) {
-    if (!med.active) continue
+    if (!med.active || !takesOn(med, day)) continue
     for (const time of med.times) {
       const key = doseKey(day, med.id, time)
       const at = atTime(dayMs, time)

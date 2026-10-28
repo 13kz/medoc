@@ -79,11 +79,31 @@ function mergeTyped<T extends object>(base: T, patch: unknown, flag: () => void)
   return out as T
 }
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+const isDay = (v: unknown): v is string => isStr(v) && DAY.test(v)
+
+function fixRhythm(r: unknown): Medication['rhythm'] {
+  if (!isObj(r)) return undefined
+  if (r.kind === 'weekdays' && Array.isArray(r.days)) {
+    const days = r.days.filter((d): d is number => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 6)
+    return days.length ? { kind: 'weekdays', days } : undefined
+  }
+  if (r.kind === 'interval' && Number.isInteger(r.every) && (r.every as number) >= 1 && isDay(r.from)) {
+    return { kind: 'interval', every: r.every as number, from: r.from }
+  }
+  return undefined
+}
+
 function fixMed(x: unknown): Medication | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.name)) return null
   const times = Array.isArray(x.times) ? x.times.filter((t): t is string => isStr(t) && HHMM.test(t)) : []
+  const { rhythm: _r, startDate: _s, endDate: _e, ...rest } = x
+  const rhythm = fixRhythm(x.rhythm)
   return {
-    ...(x as unknown as Medication),
+    ...(rest as unknown as Medication),
+    ...(rhythm ? { rhythm } : {}),
+    ...(isDay(x.startDate) ? { startDate: x.startDate } : {}),
+    ...(isDay(x.endDate) ? { endDate: x.endDate } : {}),
     form: isStr(x.form) ? (x.form as Medication['form']) : 'autre',
     dose: isStr(x.dose) ? x.dose : '',
     times,

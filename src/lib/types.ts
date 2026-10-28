@@ -14,7 +14,20 @@ export interface Medication {
   active: boolean
   /** Ajouté à cet instant (ISO) : les prises antérieures ne sont pas dues. */
   since?: string
+  /** Jours de prise ; absent = tous les jours. */
+  rhythm?: Rhythm
+  /** Premier jour du traitement (AAAA-MM-JJ). */
+  startDate?: string
+  /** Dernier jour du traitement, inclus (AAAA-MM-JJ). */
+  endDate?: string
 }
+
+export type Rhythm =
+  | { kind: 'daily' }
+  /** Jours de la semaine, 0 = dimanche … 6 = samedi. */
+  | { kind: 'weekdays'; days: number[] }
+  /** Un jour sur `every`, à compter du jour `from` (AAAA-MM-JJ). */
+  | { kind: 'interval'; every: number; from: string }
 
 /** Comment le patient perçoit son téléphone. */
 export type DisplayMode = 'voix' | 'malvoyant' | 'standard'
