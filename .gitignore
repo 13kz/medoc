@@ -5,3 +5,4 @@ dist-single
 .DS_Store
 *.tsbuildinfo
 data/
+dist-server

@@ -24,7 +24,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm test             # tests unitaires (Vitest)
 npm run test:a11y    # audit d’accessibilité axe-core (après npm run build)
-npm run server       # serveur de synchronisation sur http://localhost:8787
+npm run server       # serveur de synchronisation et d’alertes sur http://localhost:8787
 npm run build        # build classique dans dist/
 npm run build:single # un seul fichier dist-single/index.html, autonome
 node scripts/artifact.mjs # page de démo publiable comme Artifact claude.ai
@@ -41,7 +41,7 @@ src/
   components/   cadre de téléphone, horloge de démo, pastille de médicament
 ```
 
-`server/` contient le serveur de synchronisation (Node, sans dépendance) et ses tests d’intégration.
+`server/` contient le serveur de synchronisation et d’alertes (Node, sans dépendance ; il réutilise le réducteur et le moteur d’alertes de `src/lib`, d’où la construction par Vite avant lancement) et ses tests d’intégration.
 
 ## Installer sur un téléphone
 
@@ -53,7 +53,7 @@ Une fois déployée (`npm run build`, puis servir `dist/` en HTTPS), chaque rôl
 
 Sur Android, Chrome propose « Ajouter à l’écran d’accueil » ; sur iPhone, Safari > Partager > « Sur l’écran d’accueil ». Chaque adresse a son propre manifeste, donc son nom et son icône. L’heure suit l’heure réelle, et non l’horloge de démo.
 
-Un service worker garde l’application en cache : elle s’ouvre sans réseau. Les notifications système s’affichent quand l’application est en arrière-plan, après accord donné depuis l’écran du patient ou l’onglet Alertes de l’aidant. Pour que les proches soient prévenus téléphone fermé, il faudra le serveur de synchronisation et le Web Push.
+Un service worker garde l’application en cache : elle s’ouvre sans réseau. Les notifications système s’affichent quand l’application est en arrière-plan, après accord donné depuis l’écran du patient ou l’onglet Alertes de l’aidant. Pour prévenir les proches téléphone fermé, voir les alertes push plus bas.
 
 ## Partager un dossier entre les téléphones
 
@@ -67,6 +67,14 @@ Le patient confirme ses prises et règle son affichage ; les aidants et le méde
 
 Chaque geste (prise, ordonnance, réglage) part au serveur, qui vérifie le rôle, le numérote et le diffuse en direct (SSE) ; tous les appareils rejouent les gestes dans cet ordre, ce qui règle les conflits. Hors réseau, l’appli continue : les gestes attendent dans une file et partent au retour, sans doublon. L’horloge de démo reste propre à chaque appareil.
 
+### Alertes push aux proches
+
+Le serveur fait tourner le même moteur d’alertes que l’appli, toutes les 30 secondes, même si aucun téléphone n’est ouvert. Quand une prise dépasse le délai d’escalade (ou au réveil, pendant les heures calmes), ou qu’une glycémie sort des seuils, il ajoute l’alerte au dossier et envoie une notification Web Push aux aidants abonnés : « Maman n’a pas encore pris Metformine (prévu à 8 h). » Un toucher ouvre le suivi. Si la prise est faite ensuite, la notification est remplacée par « Maman a pris Metformine à 9 h 10. »
+
+- Abonnement : onglet Alertes de l’appli aidant, « Recevoir les alertes sur ce téléphone » (appli installée, hors navigation privée).
+- Clés VAPID créées au premier lancement dans `MEDOC_DATA/_vapid.json` ; chiffrement aes128gcm (RFC 8291) fait par le serveur, sans dépendance.
+- Les heures de prise sont des heures locales : lancer le serveur dans le fuseau du patient, par exemple `TZ=Europe/Paris npm run server`.
+
 ## Vers l’application mobile (EAS)
 
 L’idée est d’emballer cette page dans une WebView React Native construite avec EAS, pour Android et iPhone. `src/lib/platform.ts` prépare ce passage : si `window.ReactNativeWebView` existe, la voix, les notifications et la vibration sont envoyées au natif par `postMessage` (à brancher sur `expo-speech`, `expo-notifications` et `expo-haptics`) ; sinon les API web prennent le relais.
@@ -74,6 +82,4 @@ L’idée est d’emballer cette page dans une WebView React Native construite a
 Ce qu’il restera à faire côté mobile :
 
 - notifications locales programmées à l’avance, pour sonner même téléphone verrouillé ou appli fermée ;
-- un serveur pour partager l’ordonnance et les prises entre le téléphone du patient et ceux des proches, et pousser les alertes ;
-- comptes et invitations (le patient invite un proche ou son médecin) ;
 - à étudier : photo de la boîte, scan de l’ordonnance, suivi de la glycémie et des doses d’insuline variables.
