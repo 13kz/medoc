@@ -4,7 +4,7 @@ import { DemoClock } from './components/DemoClock'
 import { DeviceFrame } from './components/DeviceFrame'
 import { Icon } from './components/Icon'
 import { useNow } from './lib/clock'
-import { dosesForDay, spokenTime } from './lib/schedule'
+import { planAlerts, deliveredAlerts } from './lib/alerts'
 import { StoreProvider, useStore } from './lib/store'
 import { DoctorApp } from './doctor/DoctorApp'
 import { PatientApp } from './patient/PatientApp'
@@ -23,26 +23,14 @@ function readView(): View {
   return 'patient'
 }
 
-/** Crée une alerte pour chaque prise passée en retard, destinée au patient et à ses proches. */
+/** Applique le moteur d'alertes à chaque tic d'horloge : relances, alertes aux proches, alertes closes. */
 function AlertEngine() {
   const { state, dispatch } = useStore()
   const now = useNow()
   useEffect(() => {
-    for (const d of dosesForDay(state, now)) {
-      if (d.status !== 'en-retard' || state.alerts.some((a) => a.doseKey === d.key)) continue
-      const recipients = [state.patient.name, ...state.contacts.filter((c) => c.notify).map((c) => c.name)]
-      dispatch({
-        type: 'addAlert',
-        alert: {
-          id: `${d.key}|${now}`,
-          at: new Date(now).toISOString(),
-          doseKey: d.key,
-          message: `${state.patient.name} n’a pas encore pris ${d.med.name} (prévu à ${spokenTime(d.time)}).`,
-          recipients,
-          read: false,
-        },
-      })
-    }
+    const plan = planAlerts(state, now)
+    for (const alert of plan.create) dispatch({ type: 'addAlert', alert })
+    for (const r of plan.resolve) dispatch({ type: 'resolveAlert', ...r })
   }, [state, now, dispatch])
   return null
 }
@@ -60,7 +48,8 @@ function Shell() {
     }
   }, [view])
 
-  const unread = state.alerts.filter((a) => !a.read).length
+  const now = useNow()
+  const unread = deliveredAlerts(state, now).filter((a) => !a.read).length
 
   return (
     <div className={`shell view-${view}`}>
@@ -117,7 +106,7 @@ function Shell() {
             <ol>
               <li>Sur le téléphone de {state.patient.name}, touchez l’écran pour activer la voix.</li>
               <li>Avancez l’horloge : à 8 h, le téléphone sonne et lit les médicaments.</li>
-              <li>Touchez « J’ai pris », ou laissez passer 30 min pour déclencher l’alerte.</li>
+              <li>Touchez « J’ai pris », ou laissez passer 30 min : le téléphone relance, puis les proches sont prévenus 30 min plus tard.</li>
               <li>Basculez sur le téléphone de l’aidant pour voir le suivi et modifier l’ordonnance.</li>
               <li>Ouvrez la tablette du médecin : la semaine de chaque patient, et un conseil à envoyer.</li>
             </ol>

@@ -21,12 +21,14 @@ describe('reducer', () => {
     expect(reducer(s, { type: 'deleteMed', id: 'a' }).medications).toEqual([])
   })
 
-  it('ne crée qu’une alerte par prise', () => {
-    const alert = { id: '1', at: '', doseKey: key, message: '', recipients: [], read: false }
+  it('ne crée qu’une alerte par prise et par niveau, puis la clôt', () => {
+    const alert = { id: '1', level: 'rappel' as const, at: '', deliverAt: '', doseKey: key, message: '', recipients: [], read: false }
     let s = reducer(makeState(), { type: 'addAlert', alert })
     s = reducer(s, { type: 'addAlert', alert: { ...alert, id: '2' } })
-    expect(s.alerts.map((a) => a.id)).toEqual(['1'])
+    s = reducer(s, { type: 'addAlert', alert: { ...alert, id: '3', level: 'proches' } })
+    expect(s.alerts.map((a) => a.id)).toEqual(['3', '1'])
     expect(reducer(s, { type: 'readAlerts' }).alerts[0].read).toBe(true)
+    expect(reducer(s, { type: 'resolveAlert', id: '1', at: 'x' }).alerts[1].resolvedAt).toBe('x')
   })
 
   it('l’horloge de démo avance, accélère sans saut, et revient à l’heure réelle', () => {

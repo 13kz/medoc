@@ -108,7 +108,7 @@ export function SettingsTab() {
       <div className="group">
         <h3>Rappels</h3>
         <label className="field" htmlFor="late-after">
-          <span>Prévenir les proches après</span>
+          <span>Relancer {patient.name} après</span>
           <select id="late-after" value={settings.lateAfterMin} onChange={(e) => dispatch({ type: 'settings', patch: { lateAfterMin: Number(e.target.value) } })}>
             {[15, 30, 45, 60, 90].map((m) => (
               <option key={m} value={m}>
@@ -117,6 +117,54 @@ export function SettingsTab() {
             ))}
           </select>
         </label>
+        <label className="field" htmlFor="escalate-after">
+          <span>Puis prévenir les proches</span>
+          <select
+            id="escalate-after"
+            value={settings.escalateAfterMin}
+            onChange={(e) => dispatch({ type: 'settings', patch: { escalateAfterMin: Number(e.target.value) } })}
+          >
+            {[0, 15, 30, 60, 90].map((m) => (
+              <option key={m} value={m}>
+                {m === 0 ? 'en même temps' : `${m} minutes plus tard`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="switch">
+          <span>
+            Heures calmes
+            <small>La nuit, les alertes aux proches attendent le matin.</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={settings.quietHours}
+            onChange={(e) => dispatch({ type: 'settings', patch: { quietHours: e.target.checked } })}
+          />
+        </label>
+        {settings.quietHours && (
+          <div className="field-row">
+            <label className="field" htmlFor="quiet-from">
+              <span>De</span>
+              <input
+                id="quiet-from"
+                type="time"
+                value={settings.quietFrom}
+                onChange={(e) => e.target.value && dispatch({ type: 'settings', patch: { quietFrom: e.target.value } })}
+              />
+            </label>
+            <label className="field" htmlFor="quiet-to">
+              <span>À</span>
+              <input
+                id="quiet-to"
+                type="time"
+                value={settings.quietTo}
+                onChange={(e) => e.target.value && dispatch({ type: 'settings', patch: { quietTo: e.target.value } })}
+              />
+            </label>
+          </div>
+        )}
         <label className="field" htmlFor="snooze">
           <span>« Plus tard » reporte de</span>
           <select id="snooze" value={settings.snoozeMin} onChange={(e) => dispatch({ type: 'settings', patch: { snoozeMin: Number(e.target.value) } })}>

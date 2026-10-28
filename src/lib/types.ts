@@ -49,20 +49,35 @@ export interface Intake {
   by: 'patient' | 'aidant'
 }
 
+/** `rappel` : le téléphone du patient relance. `proches` : les personnes à prévenir sont alertées. */
+export type AlertLevel = 'rappel' | 'proches'
+
 export interface Alert {
   id: string
+  level: AlertLevel
+  /** Création de l'alerte (ISO). */
   at: string
+  /** Envoi aux destinataires (ISO) : plus tard que `at` si l'alerte tombe pendant les heures calmes. */
+  deliverAt: string
   doseKey: string
   message: string
   recipients: string[]
   read: boolean
+  /** La prise a fini par être faite (ISO de la prise). */
+  resolvedAt?: string
 }
 
 export interface Settings {
-  /** Minutes après l'heure prévue avant de considérer la prise en retard. */
+  /** Minutes après l'heure prévue avant de considérer la prise en retard et de relancer le patient. */
   lateAfterMin: number
+  /** Minutes après la relance avant de prévenir les proches. */
+  escalateAfterMin: number
   /** Minutes de report quand le patient répond « plus tard ». */
   snoozeMin: number
+  /** Ne pas alerter les proches la nuit : les alertes partent à la fin des heures calmes. */
+  quietHours: boolean
+  quietFrom: string
+  quietTo: string
 }
 
 export interface Clock {
@@ -85,7 +100,7 @@ export interface Note {
 }
 
 export interface AppState {
-  version: 2
+  version: 3
   patient: Patient
   medications: Medication[]
   contacts: Contact[]

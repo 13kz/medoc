@@ -1,7 +1,7 @@
 import { seedState } from './seed'
 import type { Alert, AppState, Contact, Medication, Note } from './types'
 
-export const CURRENT_VERSION = 2
+export const CURRENT_VERSION = 3
 
 type Raw = Record<string, unknown>
 
@@ -15,6 +15,11 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     const patient = isObj(s.patient) ? s.patient : {}
     return { ...s, notes: [], patient: { fullName: patient.name, conditions: [], ...patient } }
   },
+  // v2 : une seule sorte d'alerte, envoyée aussitôt aux proches.
+  2: (s) => ({
+    ...s,
+    alerts: Array.isArray(s.alerts) ? s.alerts.map((a) => (isObj(a) ? { level: 'proches', deliverAt: a.at, ...a } : a)) : s.alerts,
+  }),
 }
 
 export interface Loaded {
@@ -98,10 +103,21 @@ const fixIntake = (x: unknown) =>
 
 const fixIso = (x: unknown) => (isStr(x) && !Number.isNaN(Date.parse(x)) ? x : null)
 
-const fixAlert = (x: unknown): Alert | null =>
-  isObj(x) && isStr(x.id) && isStr(x.doseKey) && isStr(x.message)
-    ? ({ ...(x as unknown as Alert), at: isStr(x.at) ? x.at : '', recipients: Array.isArray(x.recipients) ? x.recipients.filter(isStr) : [], read: x.read === true })
-    : null
+function fixAlert(x: unknown): Alert | null {
+  if (!isObj(x) || !isStr(x.id) || !isStr(x.doseKey) || !isStr(x.message) || !fixIso(x.at)) return null
+  const at = x.at as string
+  return {
+    id: x.id,
+    level: x.level === 'rappel' ? 'rappel' : 'proches',
+    at,
+    deliverAt: fixIso(x.deliverAt) ?? at,
+    doseKey: x.doseKey,
+    message: x.message,
+    recipients: Array.isArray(x.recipients) ? x.recipients.filter(isStr) : [],
+    read: x.read === true,
+    ...(fixIso(x.resolvedAt) ? { resolvedAt: x.resolvedAt as string } : {}),
+  }
+}
 
 const fixNote = (x: unknown): Note | null =>
   isObj(x) && isStr(x.id) && isStr(x.text)
