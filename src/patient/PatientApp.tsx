@@ -249,7 +249,7 @@ export function PatientApp() {
               </div>
             )}
             <div className="p-med">
-              {!voiceFirst && compartment.length <= 1 && <Pill med={current.med} size="xl" />}
+              {!voiceFirst && compartment.length <= 1 && <Pill med={current.med} size="xl" photo />}
               <h1 className="p-name">{current.med.name}</h1>
               <p className="p-dose">{current.med.dose}</p>
               {current.med.instructions && (
@@ -292,7 +292,7 @@ export function PatientApp() {
           <h1 className="p-name">Rien à prendre maintenant</h1>
           {next ? (
             <div className="p-next">
-              <Pill med={next.med} size="md" />
+              <Pill med={next.med} size="md" photo />
               <div>
                 <p className="p-next-when">
                   {momentInfo(next.time).label}, à <strong>{spokenTime(next.time)}</strong>

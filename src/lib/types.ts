@@ -24,6 +24,8 @@ export interface Medication {
   asNeeded?: AsNeeded
   /** Suivi du stock, si l'aidant l'a activé. */
   stock?: Stock
+  /** Photo de la boîte, réduite (data URL JPEG). */
+  photo?: string
 }
 
 export interface Stock {
