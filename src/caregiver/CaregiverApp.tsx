@@ -4,9 +4,10 @@ import { Pill } from '../components/Pill'
 import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
 import { asNeededLabel, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
+import { refills, stockLabel } from '../lib/stock'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
-import { MOMENTS, adherence, dosesForDay, rhythmLabel, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
+import { MOMENTS, adherence, dayKey, dosesForDay, rhythmLabel, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { DisplayMode, DoseStatus, Medication } from '../lib/types'
 import { MedEditor } from './MedEditor'
@@ -164,6 +165,18 @@ export function CaregiverApp() {
               </div>
             )}
 
+            {refills(state, dayKey(now)).map((m) => (
+              <div key={m.id} className="cg-notice refill" role="status">
+                <Icon name="box" size={22} stroke={2.2} />
+                <p>
+                  <strong>À racheter : {m.name}.</strong> {stockLabel(m)}.
+                </p>
+                <button className="secondary" onClick={() => dispatch({ type: 'restock', medId: m.id })}>
+                  J’ai racheté une boîte
+                </button>
+              </div>
+            ))}
+
             <ol className="cg-timeline">
               {MOMENTS.map((m) => {
                 const items = doses.filter((d) => momentOf(d.time) === m.id)
@@ -292,6 +305,9 @@ export function CaregiverApp() {
                         {m.instructions && `, ${m.instructions.charAt(0).toLowerCase()}${m.instructions.slice(1)}`}
                       </span>
                       {m.active && <span className="cg-meta">{m.asNeeded ? asNeededLabel(m) : rhythmLabel(m)}</span>}
+                      {m.active && m.stock && (
+                        <span className={`cg-meta ${refills(state, dayKey(now)).includes(m) ? 'cg-warn' : ''}`}>{stockLabel(m)}</span>
+                      )}
                       <span className="cg-times">
                         {m.asNeeded ? null : m.active ? (
                           [...m.times].sort().map((t) => (

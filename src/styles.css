@@ -3653,3 +3653,28 @@ button.armed {
 .cg-prn .cg-dose {
   grid-template-columns: 36px 1fr 44px;
 }
+
+/* Stock bas : à racheter */
+.cg-notice.refill {
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--amber-soft);
+  color: #5c3300;
+}
+
+.cg-notice.refill .icon {
+  color: var(--amber);
+}
+
+.cg-notice.refill p {
+  flex: 1;
+  min-width: 60%;
+}
+
+.cg-notice.refill button {
+  margin-left: auto;
+}
+
+.field-row.three {
+  grid-template-columns: 1fr 1fr 1fr;
+}

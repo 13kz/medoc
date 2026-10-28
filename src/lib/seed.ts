@@ -34,6 +34,7 @@ export function seedState(): AppState {
         instructions: 'Pendant le repas',
         color: '#f5f5f5',
         active: true,
+        stock: { units: 48, perDose: 1, boxSize: 90 },
       },
       {
         id: 'ramipril',
@@ -44,6 +45,7 @@ export function seedState(): AppState {
         instructions: 'Avec un verre d’eau',
         color: '#f2a33a',
         active: true,
+        stock: { units: 5, perDose: 1, boxSize: 30 },
       },
       {
         id: 'kardegic',
@@ -101,7 +103,7 @@ export function seedState(): AppState {
       { id: 'medecin', name: 'Dr Martin', role: 'medecin', notify: false },
       { id: 'voisine', name: 'Sylvie (voisine)', role: 'tiers', notify: true },
     ],
-    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
+    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, refillDays: 7, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
     intakes: {},
     asNeededIntakes: [],
     snoozes: {},

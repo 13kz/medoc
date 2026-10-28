@@ -165,6 +165,16 @@ export function SettingsTab() {
             </label>
           </div>
         )}
+        <label className="field" htmlFor="refill">
+          <span>Prévenir pour racheter quand il reste</span>
+          <select id="refill" value={settings.refillDays} onChange={(e) => dispatch({ type: 'settings', patch: { refillDays: Number(e.target.value) } })}>
+            {[3, 5, 7, 10, 14].map((d) => (
+              <option key={d} value={d}>
+                moins de {d} jours
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="field" htmlFor="snooze">
           <span>« Plus tard » reporte de</span>
           <select id="snooze" value={settings.snoozeMin} onChange={(e) => dispatch({ type: 'settings', patch: { snoozeMin: Number(e.target.value) } })}>
