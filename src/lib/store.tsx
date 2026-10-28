@@ -29,7 +29,7 @@ export function simulatedNow(clock: AppState['clock'], real: number): number {
   return real + clock.offsetMs + (real - clock.anchorMs) * (clock.speed - 1)
 }
 
-function reducer(state: AppState, action: Action): AppState {
+export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'take': {
       const { [action.doseKey]: _, ...snoozes } = state.snoozes

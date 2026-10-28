@@ -22,6 +22,7 @@ L’ordonnance fournie est fictive. Les données restent dans le navigateur (`lo
 ```bash
 npm install
 npm run dev          # http://localhost:5173
+npm test             # tests unitaires (Vitest)
 npm run build        # build classique dans dist/
 npm run build:single # un seul fichier dist-single/index.html, autonome
 node scripts/artifact.mjs # page de démo publiable comme Artifact claude.ai
