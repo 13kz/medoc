@@ -22,6 +22,17 @@ export interface Medication {
   endDate?: string
   /** À prendre à la demande, sans heure fixe : `times` est alors ignoré. */
   asNeeded?: AsNeeded
+  /** Suivi du stock, si l'aidant l'a activé. */
+  stock?: Stock
+}
+
+export interface Stock {
+  /** Unités restantes (comprimés, sachets…). */
+  units: number
+  /** Unités consommées à chaque prise. */
+  perDose: number
+  /** Unités dans une boîte, ajoutées par « J'ai racheté une boîte ». */
+  boxSize: number
 }
 
 export interface AsNeeded {
@@ -106,6 +117,8 @@ export interface Settings {
   escalateAfterMin: number
   /** Minutes de report quand le patient répond « plus tard ». */
   snoozeMin: number
+  /** Prévenir l'aidant quand il reste moins de ce nombre de jours de traitement. */
+  refillDays: number
   /** Ne pas alerter les proches la nuit : les alertes partent à la fin des heures calmes. */
   quietHours: boolean
   quietFrom: string

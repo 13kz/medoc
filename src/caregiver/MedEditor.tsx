@@ -309,6 +309,54 @@ export function MedEditor({
           {!validDates && <p className="field-error">Le dernier jour est avant le début.</p>}
         </fieldset>
 
+        <label className="switch">
+          <span>
+            Suivre le stock
+            <small>Décompté à chaque prise, pour savoir quand racheter.</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={!!draft.stock}
+            onChange={(e) => set({ stock: e.target.checked ? { units: 30, perDose: 1, boxSize: 30 } : undefined })}
+          />
+        </label>
+        {draft.stock && (
+          <div className="field-row three">
+            <label className="field">
+              <span>Il en reste</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={draft.stock.units}
+                onChange={(e) => set({ stock: { ...draft.stock!, units: Math.max(0, Number(e.target.value)) } })}
+              />
+            </label>
+            <label className="field">
+              <span>Par prise</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0.25}
+                step={0.25}
+                value={draft.stock.perDose}
+                onChange={(e) => Number(e.target.value) > 0 && set({ stock: { ...draft.stock!, perDose: Number(e.target.value) } })}
+              />
+            </label>
+            <label className="field">
+              <span>Par boîte</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={draft.stock.boxSize}
+                onChange={(e) => Number(e.target.value) > 0 && set({ stock: { ...draft.stock!, boxSize: Number(e.target.value) } })}
+              />
+            </label>
+          </div>
+        )}
+
         <label className="field">
           <span>Consigne (lue à voix haute)</span>
           <input

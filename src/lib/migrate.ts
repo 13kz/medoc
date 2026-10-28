@@ -106,15 +106,22 @@ const fixAsNeededIntake = (x: unknown): AsNeededIntake | null =>
     ? { id: x.id, medId: x.medId, takenAt: x.takenAt as string, by: x.by === 'aidant' ? 'aidant' : 'patient', early: x.early === true }
     : null
 
+function fixStock(a: unknown): Medication['stock'] {
+  if (!isObj(a) || !isNum(a.units) || !isNum(a.perDose) || !isNum(a.boxSize) || a.perDose <= 0) return undefined
+  return { units: a.units, perDose: a.perDose, boxSize: a.boxSize }
+}
+
 function fixMed(x: unknown): Medication | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.name)) return null
   const times = Array.isArray(x.times) ? x.times.filter((t): t is string => isStr(t) && HHMM.test(t)) : []
-  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, ...rest } = x
+  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, stock: _k, ...rest } = x
+  const stock = fixStock(x.stock)
   const rhythm = fixRhythm(x.rhythm)
   const asNeeded = fixAsNeeded(x.asNeeded)
   return {
     ...(rest as unknown as Medication),
     ...(asNeeded ? { asNeeded } : {}),
+    ...(stock ? { stock } : {}),
     ...(rhythm ? { rhythm } : {}),
     ...(isDay(x.startDate) ? { startDate: x.startDate } : {}),
     ...(isDay(x.endDate) ? { endDate: x.endDate } : {}),

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
 import { parseStored } from './migrate'
+import { consume, medIdOf } from './stock'
 import { seedState } from './seed'
 import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note, Patient, Settings } from './types'
 
@@ -12,6 +13,7 @@ export type Action =
   | { type: 'untake'; doseKey: string }
   | { type: 'takeAsNeeded'; intake: AsNeededIntake }
   | { type: 'untakeAsNeeded'; id: string }
+  | { type: 'restock'; medId: string }
   | { type: 'snooze'; doseKey: string; until: number }
   | { type: 'upsertMed'; med: Medication }
   | { type: 'deleteMed'; id: string }
@@ -39,9 +41,11 @@ export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'take': {
       const { [action.doseKey]: _, ...snoozes } = state.snoozes
+      const already = action.doseKey in state.intakes
       return {
         ...state,
         snoozes,
+        medications: already ? state.medications : consume(state.medications, medIdOf(action.doseKey)),
         intakes: {
           ...state.intakes,
           [action.doseKey]: { takenAt: new Date(action.at).toISOString(), by: action.by },
@@ -49,13 +53,32 @@ export function reducer(state: AppState, action: Action): AppState {
       }
     }
     case 'untake': {
+      if (!(action.doseKey in state.intakes)) return state
       const { [action.doseKey]: _, ...intakes } = state.intakes
-      return { ...state, intakes }
+      return { ...state, intakes, medications: consume(state.medications, medIdOf(action.doseKey), -1) }
     }
     case 'takeAsNeeded':
-      return { ...state, asNeededIntakes: [action.intake, ...state.asNeededIntakes].slice(0, 500) }
-    case 'untakeAsNeeded':
-      return { ...state, asNeededIntakes: state.asNeededIntakes.filter((i) => i.id !== action.id) }
+      return {
+        ...state,
+        medications: consume(state.medications, action.intake.medId),
+        asNeededIntakes: [action.intake, ...state.asNeededIntakes].slice(0, 500),
+      }
+    case 'untakeAsNeeded': {
+      const intake = state.asNeededIntakes.find((i) => i.id === action.id)
+      if (!intake) return state
+      return {
+        ...state,
+        medications: consume(state.medications, intake.medId, -1),
+        asNeededIntakes: state.asNeededIntakes.filter((i) => i.id !== action.id),
+      }
+    }
+    case 'restock':
+      return {
+        ...state,
+        medications: state.medications.map((m) =>
+          m.id === action.medId && m.stock ? { ...m, stock: { ...m.stock, units: m.stock.units + m.stock.boxSize } } : m,
+        ),
+      }
     case 'snooze':
       return {
         ...state,
