@@ -39,6 +39,18 @@ src/
   components/   cadre de téléphone, horloge de démo, pastille de médicament
 ```
 
+## Installer sur un téléphone
+
+Une fois déployée (`npm run build`, puis servir `dist/` en HTTPS), chaque rôle a sa propre adresse, installable sur l’écran d’accueil :
+
+- `/patient` pour la personne qui prend le traitement ;
+- `/aidant` pour un proche ;
+- `/medecin` pour le médecin.
+
+Sur Android, Chrome propose « Ajouter à l’écran d’accueil » ; sur iPhone, Safari > Partager > « Sur l’écran d’accueil ». Chaque adresse a son propre manifeste, donc son nom et son icône. L’heure suit l’heure réelle, et non l’horloge de démo.
+
+Un service worker garde l’application en cache : elle s’ouvre sans réseau. Les notifications système s’affichent quand l’application est en arrière-plan, après accord donné depuis l’écran du patient ou l’onglet Alertes de l’aidant. Pour que les proches soient prévenus téléphone fermé, il faudra le serveur de synchronisation et le Web Push.
+
 ## Vers l’application mobile (EAS)
 
 L’idée est d’emballer cette page dans une WebView React Native construite avec EAS, pour Android et iPhone. `src/lib/platform.ts` prépare ce passage : si `window.ReactNativeWebView` existe, la voix, les notifications et la vibration sont envoyées au natif par `postMessage` (à brancher sur `expo-speech`, `expo-notifications` et `expo-haptics`) ; sinon les API web prennent le relais.

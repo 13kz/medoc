@@ -4129,3 +4129,26 @@ button.armed {
   outline-color: var(--go);
   outline-width: 4px;
 }
+
+/* Appli d'un seul rôle, en plein écran (installée sur l'écran d'accueil). */
+.standalone {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.standalone .device-glass {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  border-radius: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.standalone.device-tablet .device-glass {
+  border-radius: 0;
+}
+
+.standalone .cg-tabs {
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+}

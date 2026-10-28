@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { ChangeLog } from '../components/ChangeLog'
+import { NotifyOffer } from '../components/NotifyOffer'
 import { HistoryView } from '../components/HistoryView'
 import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
@@ -76,7 +77,7 @@ export function CaregiverApp() {
     if (!message) return
     setBanner(message)
     vibrate()
-    systemNotify('Medoc', message)
+    systemNotify('Medoc', message, 'alerte')
     const id = setTimeout(() => setBanner(null), 6000)
     return () => clearTimeout(id)
   }, [alerts.map((a) => `${a.id}:${a.resolvedAt ?? ''}`).join(',')])
@@ -344,6 +345,7 @@ export function CaregiverApp() {
         {tab === 'alertes' && (
           <section aria-label="Alertes" className="cg-stack">
             <h2 className="cg-title">Alertes et messages</h2>
+            <NotifyOffer className="secondary block" label="Recevoir les alertes en notification" />
             {state.notes.length > 0 && (
               <ul className="cg-list cg-notes">
                 {state.notes.map((n) => (

@@ -1,0 +1,36 @@
+{
+  "lang": "fr",
+  "dir": "ltr",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "health",
+    "medical"
+  ],
+  "id": "/aidant",
+  "name": "Medoc aidant",
+  "short_name": "Medoc aidant",
+  "description": "Le suivi des médicaments d’un proche.",
+  "start_url": "/aidant",
+  "scope": "/",
+  "background_color": "#eef1ec",
+  "theme_color": "#0b6e4f",
+  "orientation": "portrait"
+}

@@ -9,8 +9,10 @@ import {
   listenOnce,
   speak,
   stopSpeaking,
+  systemNotify,
   vibrate,
 } from '../lib/platform'
+import { NotifyOffer } from '../components/NotifyOffer'
 import { MOMENTS, dayKey, dosesForDay, isLastDay, momentInfo, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import { asNeededAdvice, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
@@ -44,8 +46,19 @@ export function PatientApp() {
   const [spoken, setSpoken] = useState('')
   const say = (text: string) => (patient.screenReader ? setSpoken(text) : speak(text, patient.voiceRate))
 
-  // Annonce sonore et vocale dès qu'une prise devient due, puis à nouveau si elle passe en retard.
   const signature = pending.map((d) => `${d.key}:${d.status}`).join(',')
+
+  // Notification du système (appli en arrière-plan) dès qu'une prise devient due, même sans la voix activée.
+  const notified = useRef(new Set<string>())
+  useEffect(() => {
+    const fresh = pending.filter((d) => !notified.current.has(`${d.key}:${d.status}`))
+    for (const d of fresh) notified.current.add(`${d.key}:${d.status}`)
+    if (fresh.length === 0) return
+    const names = fresh.map((d) => d.med.name).join(', ')
+    systemNotify(fresh.every((d) => d.status === 'en-retard') ? 'Pas encore pris' : 'C’est l’heure', names, 'prise')
+  }, [signature])
+
+  // Annonce sonore et vocale dès qu'une prise devient due, puis à nouveau si elle passe en retard.
   useEffect(() => {
     if (!unlocked) return
     const fresh = pending.filter((d) => announced.current.get(d.key) !== d.status)
@@ -377,6 +390,7 @@ export function PatientApp() {
               <Icon name="speaker" size="1.2em" />
               Écouter ma journée
             </button>
+            <NotifyOffer className="p-btn p-ghost" label="Recevoir les rappels même écran éteint" />
             {canListen() && (
               <button className={`p-btn p-ghost ${listening ? 'on' : ''}`} onClick={listen} aria-pressed={listening}>
                 <Icon name="mic" size="1.1em" />

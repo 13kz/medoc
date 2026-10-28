@@ -5,6 +5,7 @@ import { DeviceFrame } from './components/DeviceFrame'
 import { Icon } from './components/Icon'
 import { useNow } from './lib/clock'
 import { planAlerts, deliveredAlerts } from './lib/alerts'
+import { roleFromLocation, applyRoleManifest, type Role } from './lib/pwa'
 import { StoreProvider, useStore } from './lib/store'
 import { DoctorApp } from './doctor/DoctorApp'
 import { PatientApp } from './patient/PatientApp'
@@ -12,6 +13,9 @@ import { PatientApp } from './patient/PatientApp'
 type View = 'patient' | 'aidant' | 'medecin' | 'both'
 
 const VIEW_KEY = 'medoc:view'
+
+// La page autonome (un seul fichier) n'a pas de serveur pour répondre à /patient : on passe par l'ancre.
+const roleHref = (role: Role) => (import.meta.env.MODE === 'single' ? `#/${role}` : `/${role}`)
 
 function readView(): View {
   try {
@@ -111,6 +115,10 @@ function Shell() {
               <li>Ouvrez la tablette du médecin : la semaine de chaque patient, et un conseil à envoyer.</li>
             </ol>
             <p className="muted">Ordonnance fictive. Les données restent dans ce navigateur.</p>
+            <p className="muted">
+              Pour installer un seul rôle sur un téléphone : <a href={roleHref('patient')}>patient</a>,{' '}
+              <a href={roleHref('aidant')}>aidant</a>, <a href={roleHref('medecin')}>médecin</a>.
+            </p>
           </section>
         </aside>
 
@@ -134,10 +142,31 @@ function Shell() {
   )
 }
 
-export default function App() {
+/** L'appli d'un seul rôle, en plein écran, telle qu'on l'installe sur son téléphone ou sa tablette. */
+function Standalone({ role }: { role: Role }) {
+  const { state, dispatch } = useStore()
+  // Hors démo, l'heure est l'heure réelle.
+  useEffect(() => {
+    if (state.clock.offsetMs !== 0 || state.clock.speed !== 1) dispatch({ type: 'clockReset', realNow: Date.now() })
+  }, [])
+  const variant = role === 'patient' ? `patient-${state.patient.displayMode}` : role === 'aidant' ? 'aidant' : 'tablet'
   return (
-    <StoreProvider>
-      <Shell />
-    </StoreProvider>
+    <div className={`standalone device-${variant}`}>
+      <AlertEngine />
+      <div className="device-glass">
+        <div className="device-screen">{role === 'patient' ? <PatientApp /> : role === 'aidant' ? <CaregiverApp /> : <DoctorApp />}</div>
+      </div>
+    </div>
   )
+}
+
+export default function App() {
+  const [role, setRole] = useState(roleFromLocation)
+  useEffect(() => {
+    const onHash = () => setRole(roleFromLocation())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  applyRoleManifest(role)
+  return <StoreProvider>{role ? <Standalone role={role} /> : <Shell />}</StoreProvider>
 }
