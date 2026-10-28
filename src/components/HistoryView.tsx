@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { asNeededMeds } from '../lib/asNeeded'
 import { formatGlucose } from '../lib/glucose'
 import { adherenceByMed, historyCsv, historyDays, totalAdherence, type HistoryDay } from '../lib/history'
 import { formatTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
+import { useFocusTrap } from '../lib/useFocusTrap'
 import type { AppState } from '../lib/types'
 import { Icon } from './Icon'
 
@@ -124,6 +125,8 @@ function PrintReport({ state, history, onDone }: { state: AppState; history: His
 export function HistoryView({ now, onClose }: { now: number; onClose: () => void }) {
   const { state } = useStore()
   const [printing, setPrinting] = useState(false)
+  const sheet = useRef<HTMLDivElement>(null)
+  useFocusTrap(sheet, onClose)
   const history = historyDays(state, now, 30)
   // Jours avant l'ajout du premier médicament : rien à montrer.
   const shown = history.filter((d) => d.doses.length + d.asNeeded.length + d.glucose.length > 0)
@@ -133,12 +136,13 @@ export function HistoryView({ now, onClose }: { now: number; onClose: () => void
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={sheet}
+        tabIndex={-1}
         className="sheet hist"
         role="dialog"
         aria-modal="true"
         aria-label="Historique des 30 derniers jours"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <div className="sheet-head">
           <button type="button" className="ghost" onClick={onClose}>

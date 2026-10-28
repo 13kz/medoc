@@ -98,6 +98,10 @@ export interface Patient {
   /** Lire automatiquement à voix haute quand une prise arrive. */
   autoRead: boolean
   voiceRate: number
+  /** Le patient utilise VoiceOver ou TalkBack : l'appli lui laisse la parole au lieu de parler elle-même. */
+  screenReader: boolean
+  /** Agrandissement du texte en plus de celui du mode d'affichage. */
+  textScale: number
 }
 
 export type ContactRole = 'famille' | 'medecin' | 'tiers'

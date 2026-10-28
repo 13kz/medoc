@@ -23,6 +23,7 @@ L’ordonnance fournie est fictive. Les données restent dans le navigateur (`lo
 npm install
 npm run dev          # http://localhost:5173
 npm test             # tests unitaires (Vitest)
+npm run test:a11y    # audit d’accessibilité axe-core (après npm run build)
 npm run build        # build classique dans dist/
 npm run build:single # un seul fichier dist-single/index.html, autonome
 node scripts/artifact.mjs # page de démo publiable comme Artifact claude.ai

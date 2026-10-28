@@ -87,10 +87,10 @@ export function CaregiverApp() {
 
   return (
     <div className="cg">
+      <div role="alert" className="cg-banner-live">
       {banner && (
         <button
           className="cg-banner"
-          role="alert"
           onClick={() => {
             setBanner(null)
             setTab('alertes')
@@ -100,11 +100,12 @@ export function CaregiverApp() {
             <Icon name="alert" size={18} stroke={2.4} />
           </span>
           <span className="cg-banner-text">
-            <span className="cg-banner-app">Medoc, maintenant</span>
+            <span className="cg-banner-app">Medoc, maintenant :</span>{' '}
             <span>{banner}</span>
           </span>
         </button>
       )}
+      </div>
 
       <header className="cg-head">
         <span className="cg-avatar" aria-hidden="true">

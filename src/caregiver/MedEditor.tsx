@@ -3,6 +3,7 @@ import { ConfirmButton } from '../components/ConfirmButton'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { compressPhoto } from '../lib/photo'
+import { useFocusTrap } from '../lib/useFocusTrap'
 import { FORMS, addDays, dayKey } from '../lib/schedule'
 import type { MedForm, Medication, Rhythm } from '../lib/types'
 
@@ -65,6 +66,8 @@ export function MedEditor({
   )
   const set = (patch: Partial<Medication>) => setDraft((d) => ({ ...d, ...patch }))
   const fileInput = useRef<HTMLInputElement>(null)
+  const sheet = useRef<HTMLFormElement>(null)
+  useFocusTrap(sheet, onClose)
   const [photoError, setPhotoError] = useState(false)
   const times = [...new Set(draft.times)].sort()
   const today = dayKey(now)
@@ -79,12 +82,13 @@ export function MedEditor({
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <form
+        ref={sheet}
+        tabIndex={-1}
         className="sheet"
         role="dialog"
         aria-modal="true"
         aria-label={med ? 'Modifier le médicament' : 'Ajouter un médicament'}
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
         onSubmit={(e) => {
           e.preventDefault()
           if (valid) onSave({ ...draft, name: draft.name.trim(), times: prn ? [] : times, instructions: draft.instructions?.trim() || undefined })
