@@ -1,5 +1,5 @@
 // Service worker de Medoc : l'appli s'ouvre sans réseau, et les notifications ramènent à l'appli.
-const CACHE = 'medoc-v1'
+const CACHE = 'medoc-v2'
 const SHELL = ['/', '/patient', '/aidant', '/medecin', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {
@@ -60,6 +60,26 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => new URL(w.url).pathname === target)
       return open ? open.focus() : self.clients.openWindow(target)
+    }),
+  )
+})
+
+// Alerte envoyée par le serveur quand l'appli est fermée : « Maman n'a pas encore pris… ».
+self.addEventListener('push', (event) => {
+  let msg = {}
+  try {
+    msg = event.data ? event.data.json() : {}
+  } catch {
+    msg = { body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(msg.title || 'Medoc', {
+      body: msg.body || 'Nouvelle alerte',
+      tag: msg.tag,
+      renotify: true,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: msg.url || '/aidant' },
     }),
   )
 })

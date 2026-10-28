@@ -16,20 +16,39 @@
  *   GET    /api/dossiers/:id/members                                    membres et invitations en cours
  *   POST   /api/dossiers/:id/invitations          { role, name? }       { code, expiresAt }
  *   DELETE /api/dossiers/:id/members/:memberId                          retire l'accès
+ *   GET    /api/push/key                                                clé publique VAPID
+ *   POST   /api/dossiers/:id/push                 { subscription }      alertes push sur cet appareil
+ *   DELETE /api/dossiers/:id/push                 { endpoint }
  *
- * Lancer : node server/sync-server.ts [port] (données dans MEDOC_DATA, par défaut ./data)
+ * Le serveur rejoue aussi le dossier avec le même réducteur que l'appli : il refuse une action qui ne
+ * s'applique pas, et fait tourner le moteur d'alertes pour prévenir les aidants par Web Push, même
+ * quand aucune appli n'est ouverte.
+ *
+ * Lancer : npm run server (données dans MEDOC_DATA, par défaut ./data).
  */
 import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { planAlerts, resolvedMessage } from '../src/lib/alerts'
+import { reducer, type Action } from '../src/lib/reducer'
+import type { AppState } from '../src/lib/types'
+import { generateVapid, sendPush, type PushSubscription, type Vapid } from './webpush'
 
 export type Role = 'patient' | 'aidant' | 'medecin'
 export type Op = { seq: number; opId: string; clientId: string; by: string; action: { type: string } }
-type Member = { id: string; role: Role; name: string; tokenHash: string; createdAt: string; revokedAt?: string }
+type Member = { id: string; role: Role; name: string; tokenHash: string; createdAt: string; revokedAt?: string; push?: PushSubscription[] }
 type Invitation = { code: string; dossier: string; role: Role; name: string; by: string; expiresAt: number }
-type Dossier = { base: unknown; ops: Op[]; members: Member[]; opIds: Set<string> }
+type Dossier = {
+  base: AppState
+  ops: Op[]
+  members: Member[]
+  /** Alertes déjà envoyées par push (et `id:pris` pour le message de fin). */
+  pushed: string[]
+  opIds: Set<string>
+  /** Le dossier rejoué, en mémoire seulement. */
+  state: AppState
+}
 
 const ROLES: Role[] = ['patient', 'aidant', 'medecin']
 const ID = /^[A-Za-z0-9_-]{6,64}$/
@@ -71,7 +90,20 @@ class HttpError extends Error {
   }
 }
 
-export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string; now?: () => number } = {}): Server {
+export type SyncServerOptions = {
+  dataDir?: string
+  now?: () => number
+  /** Clés VAPID ; par défaut lues dans `MEDOC_DATA/_vapid.json`, créées au premier lancement. */
+  vapid?: Vapid
+  /** Pour les tests : le `fetch` qui joint les services de push. */
+  pushFetch?: typeof fetch
+  /** Intervalle du moteur d'alertes ; 0 pour ne le lancer qu'à la main (`tick`). */
+  tickMs?: number
+}
+
+export type SyncServer = Server & { tick: () => Promise<void> }
+
+export function createSyncServer({ dataDir, now = Date.now, vapid: givenVapid, pushFetch, tickMs = 30_000 }: SyncServerOptions = {}): SyncServer {
   const dossiers = new Map<string, Dossier>()
   /** Flux ouverts, par dossier, avec le membre qui écoute (pour le couper s'il perd l'accès). */
   const listeners = new Map<string, Map<ServerResponse, string>>()
@@ -88,6 +120,21 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
 
   const fileOf = (id: string) => join(dataDir!, `${id}.json`)
 
+  const vapid: Vapid = givenVapid ?? loadVapid()
+  function loadVapid(): Vapid {
+    if (!dataDir) return generateVapid()
+    const file = join(dataDir, '_vapid.json')
+    try {
+      return JSON.parse(readFileSync(file, 'utf8')) as Vapid
+    } catch {
+      const v = generateVapid()
+      writeFileSync(file, JSON.stringify(v))
+      return v
+    }
+  }
+
+  const replay = (base: AppState, ops: Op[]) => ops.reduce((s, op) => reducer(s, op.action as Action), base)
+
   // Écriture dans un fichier à côté puis renommage : un arrêt brutal ne laisse pas un dossier à moitié écrit.
   const writeJson = (file: string, data: unknown) => {
     writeFileSync(`${file}.tmp`, JSON.stringify(data))
@@ -98,8 +145,8 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
     let d = dossiers.get(id)
     if (!d && dataDir && ID.test(id)) {
       try {
-        const raw = JSON.parse(readFileSync(fileOf(id), 'utf8')) as Omit<Dossier, 'opIds'>
-        d = { ...raw, opIds: new Set(raw.ops.map((o) => o.opId)) }
+        const raw = JSON.parse(readFileSync(fileOf(id), 'utf8')) as Omit<Dossier, 'opIds' | 'state'>
+        d = { ...raw, pushed: raw.pushed ?? [], opIds: new Set(raw.ops.map((o) => o.opId)), state: replay(raw.base, raw.ops) }
         dossiers.set(id, d)
       } catch {
         // Pas de fichier pour ce dossier.
@@ -109,7 +156,7 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
   }
 
   const save = (id: string, d: Dossier) => {
-    if (dataDir) writeJson(fileOf(id), { base: d.base, ops: d.ops, members: d.members })
+    if (dataDir) writeJson(fileOf(id), { base: d.base, ops: d.ops, members: d.members, pushed: d.pushed })
   }
 
   const saveInvitations = () => {
@@ -169,6 +216,14 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
     for (const res of listeners.get(id)?.keys() ?? []) for (const op of ops) res.write(`id: ${op.seq}\ndata: ${JSON.stringify(op)}\n\n`)
   }
 
+  const append = (d: Dossier, op: Omit<Op, 'seq'>, next: AppState): Op => {
+    const full: Op = { seq: d.ops.length + 1, ...op }
+    d.ops.push(full)
+    d.opIds.add(full.opId)
+    d.state = next
+    return full
+  }
+
   const addMember = (d: Dossier, id: string, role: Role, name: string) => {
     const token = issueToken(id)
     const member: Member = { id: newId(), role, name, tokenHash: hash(token), createdAt: new Date(now()).toISOString() }
@@ -188,7 +243,8 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
       if (role === 'medecin') throw new HttpError(400, 'un dossier se crée côté patient ou aidant')
       let id = newId()
       while (get(id)) id = newId()
-      const d: Dossier = { base: body.base, ops: [], members: [], opIds: new Set() }
+      const base = body.base as AppState
+      const d: Dossier = { base, ops: [], members: [], pushed: [], opIds: new Set(), state: base }
       dossiers.set(id, d)
       return send(res, 201, addMember(d, id, role, cleanName(body.name, role)))
     }
@@ -206,7 +262,9 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
       return send(res, 201, { ...addMember(d, inv.dossier, inv.role, cleanName(body.name, inv.name)), role: inv.role })
     }
 
-    const m = path.match(/^\/api\/dossiers\/([^/]+)(?:\/(ops|events|members|invitations)(?:\/([^/]+))?)?$/)
+    if (path === '/api/push/key' && req.method === 'GET') return send(res, 200, { publicKey: vapid.publicKey })
+
+    const m = path.match(/^\/api\/dossiers\/([^/]+)(?:\/(ops|events|members|invitations|push)(?:\/([^/]+))?)?$/)
     if (!m) throw new HttpError(404, 'introuvable')
     const [, id, sub, arg] = m
     const { d, me } = authenticate(req, id)
@@ -227,10 +285,15 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
           rejected.push(o.opId)
           continue
         }
-        const op: Op = { seq: d.ops.length + 1, opId: o.opId, clientId: o.clientId, by: me.id, action: action as Op['action'] }
-        d.ops.push(op)
-        d.opIds.add(op.opId)
-        added.push(op)
+        // Une action qui ne s'applique pas au dossier (mal formée, autre version) est refusée plutôt que diffusée.
+        let next: AppState
+        try {
+          next = reducer(d.state, action as Action)
+        } catch {
+          rejected.push(o.opId)
+          continue
+        }
+        added.push(append(d, { opId: o.opId, clientId: o.clientId, by: me.id, action: action as Op['action'] }, next))
       }
       if (added.length) {
         save(id, d)
@@ -299,7 +362,76 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
       return send(res, 204)
     }
 
+    if (sub === 'push' && !arg && req.method === 'POST') {
+      const body = await readBody(req)
+      const subscription = body.subscription as PushSubscription | undefined
+      const endpoint = subscription?.endpoint
+      if (typeof endpoint !== 'string' || !/^https?:\/\//.test(endpoint) || typeof subscription?.keys?.p256dh !== 'string' || typeof subscription.keys.auth !== 'string') {
+        throw new HttpError(400, 'abonnement mal formé')
+      }
+      const clean: PushSubscription = { endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } }
+      me.push = [...(me.push ?? []).filter((p) => p.endpoint !== endpoint), clean]
+      save(id, d)
+      return send(res, 204)
+    }
+
+    if (sub === 'push' && !arg && req.method === 'DELETE') {
+      const body = await readBody(req)
+      me.push = (me.push ?? []).filter((p) => p.endpoint !== body.endpoint)
+      save(id, d)
+      return send(res, 204)
+    }
+
     throw new HttpError(405, 'méthode non prise en charge')
+  }
+
+  /**
+   * Moteur d'alertes côté serveur : crée les alertes comme le ferait un appareil ouvert, puis prévient
+   * par push les aidants abonnés quand une alerte aux proches est due, et quand la prise a fini par être faite.
+   */
+  const tick = async () => {
+    if (dataDir) for (const f of readdirSync(dataDir)) if (f.endsWith('.json') && !f.startsWith('_')) get(f.slice(0, -5))
+    const t = now()
+    for (const [id, d] of dossiers) {
+      const plan = planAlerts(d.state, t)
+      const added: Op[] = []
+      const actions: Action[] = [
+        ...plan.create.map((alert): Action => ({ type: 'addAlert', alert })),
+        ...plan.resolve.map((r): Action => ({ type: 'resolveAlert', ...r })),
+      ]
+      for (const action of actions) {
+        const next = reducer(d.state, action)
+        if (next !== d.state) added.push(append(d, { opId: `serveur-${randomBytes(9).toString('base64url')}`, clientId: 'serveur', by: 'serveur', action }, next))
+      }
+
+      const targets = d.members.filter((m) => m.role === 'aidant' && !m.revokedAt && m.push?.length)
+      const messages: { key: string; body: string; tag: string }[] = []
+      for (const a of d.state.alerts) {
+        if (a.level !== 'proches' || Date.parse(a.deliverAt) > t) continue
+        const tag = `medoc-${a.doseKey}`
+        if (!a.resolvedAt && !d.pushed.includes(a.id)) messages.push({ key: a.id, body: a.message, tag })
+        // La prise a été faite après l'alerte : le même emplacement de notification est remplacé.
+        if (a.resolvedAt && d.pushed.includes(a.id) && !d.pushed.includes(`${a.id}:pris`)) {
+          const done = resolvedMessage(d.state, a)
+          if (done) messages.push({ key: `${a.id}:pris`, body: done, tag })
+        }
+      }
+
+      let changed = added.length > 0
+      for (const msg of messages) {
+        d.pushed = [...d.pushed, msg.key].slice(-500)
+        changed = true
+        for (const m of targets) {
+          for (const subscription of m.push ?? []) {
+            const result = await sendPush(vapid, subscription, { title: 'Medoc', body: msg.body, tag: msg.tag, url: '/aidant' }, pushFetch, t)
+            // Abonnement abandonné par le téléphone : on l'oublie.
+            if (result === 'expire') m.push = (m.push ?? []).filter((p) => p.endpoint !== subscription.endpoint)
+          }
+        }
+      }
+      if (changed) save(id, d)
+      if (added.length) broadcast(id, added)
+    }
   }
 
   const server = createServer(async (req, res) => {
@@ -316,19 +448,23 @@ export function createSyncServer({ dataDir, now = Date.now }: { dataDir?: string
     }
   })
 
+  let running = false
+  const timer = tickMs > 0
+    ? setInterval(() => {
+        if (running) return
+        running = true
+        tick().finally(() => (running = false))
+      }, tickMs)
+    : null
+  timer?.unref()
+
   // Les flux SSE restent ouverts : on les coupe pour que close() se termine.
   const close = server.close.bind(server)
   server.close = (cb) => {
+    if (timer) clearInterval(timer)
     for (const set of listeners.values()) for (const res of set.keys()) res.end()
     server.closeAllConnections()
     return close(cb)
   }
-  return server
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const port = Number(process.argv[2] ?? process.env.PORT ?? 8787)
-  createSyncServer({ dataDir: process.env.MEDOC_DATA ?? 'data' }).listen(port, () => {
-    console.log(`Medoc, serveur de synchronisation sur http://localhost:${port}`)
-  })
+  return Object.assign(server, { tick })
 }

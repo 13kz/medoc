@@ -1,0 +1,167 @@
+import { diffMed } from './changes'
+import { consume, medIdOf } from './stock'
+import { seedState } from './seed'
+import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note, Patient, Settings } from './types'
+
+// Le réducteur est partagé par l'appli et le serveur : rien ici ne dépend de React ni du navigateur.
+
+export type Action =
+  | { type: 'take'; doseKey: string; by: 'patient' | 'aidant'; at: number }
+  | { type: 'untake'; doseKey: string }
+  | { type: 'takeAsNeeded'; intake: AsNeededIntake }
+  | { type: 'untakeAsNeeded'; id: string }
+  | { type: 'restock'; medId: string }
+  | { type: 'glucose'; reading: GlucoseReading }
+  | { type: 'snooze'; doseKey: string; until: number }
+  /** `by` et `at` : qui fait le changement et quand, pour le journal du traitement. */
+  | { type: 'upsertMed'; med: Medication; by?: string; at?: number }
+  | { type: 'deleteMed'; id: string; by?: string; at?: number }
+  | { type: 'ackChange'; id: string }
+  | { type: 'patient'; patch: Partial<Patient> }
+  | { type: 'settings'; patch: Partial<Settings> }
+  | { type: 'upsertContact'; contact: Contact }
+  | { type: 'deleteContact'; id: string }
+  | { type: 'addAlert'; alert: Alert }
+  | { type: 'resolveAlert'; id: string; at: string }
+  | { type: 'readAlerts' }
+  | { type: 'addNote'; note: Note }
+  | { type: 'ackNote'; id: string }
+  | { type: 'clockJump'; deltaMs: number; realNow: number }
+  | { type: 'clockSpeed'; speed: number; realNow: number }
+  | { type: 'clockReset'; realNow: number }
+  | { type: 'replace'; state: AppState }
+  | { type: 'reset' }
+
+/** Heure simulée correspondant à l'instant réel `real`. */
+export function simulatedNow(clock: AppState['clock'], real: number): number {
+  return real + clock.offsetMs + (real - clock.anchorMs) * (clock.speed - 1)
+}
+
+/** Ajoute au journal ce qui a changé dans l'ordonnance, quand on sait qui l'a fait. */
+function logChange(state: AppState, before: Medication | undefined, after: Medication | undefined, who: { by?: string; at?: number }): AppState {
+  const med = after ?? before
+  const diff = who.by && who.at !== undefined && med ? diffMed(before, after) : null
+  if (!diff || !med) return state
+  const change = {
+    id: `ch-${med.id}-${who.at}`,
+    at: new Date(who.at!).toISOString(),
+    by: who.by!,
+    medId: med.id,
+    medName: med.name,
+    acknowledged: false,
+    ...diff,
+  }
+  return { ...state, changes: [change, ...state.changes].slice(0, 200) }
+}
+
+export function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'take': {
+      const { [action.doseKey]: _, ...snoozes } = state.snoozes
+      const already = action.doseKey in state.intakes
+      return {
+        ...state,
+        snoozes,
+        medications: already ? state.medications : consume(state.medications, medIdOf(action.doseKey)),
+        intakes: {
+          ...state.intakes,
+          [action.doseKey]: { takenAt: new Date(action.at).toISOString(), by: action.by },
+        },
+      }
+    }
+    case 'untake': {
+      if (!(action.doseKey in state.intakes)) return state
+      const { [action.doseKey]: _, ...intakes } = state.intakes
+      return { ...state, intakes, medications: consume(state.medications, medIdOf(action.doseKey), -1) }
+    }
+    case 'takeAsNeeded':
+      return {
+        ...state,
+        medications: consume(state.medications, action.intake.medId),
+        asNeededIntakes: [action.intake, ...state.asNeededIntakes].slice(0, 500),
+      }
+    case 'untakeAsNeeded': {
+      const intake = state.asNeededIntakes.find((i) => i.id === action.id)
+      if (!intake) return state
+      return {
+        ...state,
+        medications: consume(state.medications, intake.medId, -1),
+        asNeededIntakes: state.asNeededIntakes.filter((i) => i.id !== action.id),
+      }
+    }
+    case 'glucose':
+      return {
+        ...state,
+        glucose: [action.reading, ...state.glucose.filter((g) => !action.reading.doseKey || g.doseKey !== action.reading.doseKey)].slice(0, 500),
+      }
+    case 'restock':
+      return {
+        ...state,
+        medications: state.medications.map((m) =>
+          m.id === action.medId && m.stock ? { ...m, stock: { ...m.stock, units: m.stock.units + m.stock.boxSize } } : m,
+        ),
+      }
+    case 'snooze':
+      return {
+        ...state,
+        snoozes: { ...state.snoozes, [action.doseKey]: new Date(action.until).toISOString() },
+      }
+    case 'upsertMed': {
+      const before = state.medications.find((m) => m.id === action.med.id)
+      const exists = !!before
+      return {
+        ...logChange(state, before, action.med, action),
+        medications: exists
+          ? state.medications.map((m) => (m.id === action.med.id ? action.med : m))
+          : [...state.medications, action.med],
+      }
+    }
+    case 'deleteMed': {
+      const before = state.medications.find((m) => m.id === action.id)
+      return { ...logChange(state, before, undefined, action), medications: state.medications.filter((m) => m.id !== action.id) }
+    }
+    case 'ackChange':
+      return { ...state, changes: state.changes.map((c) => (c.id === action.id ? { ...c, acknowledged: true } : c)) }
+    case 'patient':
+      return { ...state, patient: { ...state.patient, ...action.patch } }
+    case 'settings':
+      return { ...state, settings: { ...state.settings, ...action.patch } }
+    case 'upsertContact': {
+      const exists = state.contacts.some((c) => c.id === action.contact.id)
+      return {
+        ...state,
+        contacts: exists
+          ? state.contacts.map((c) => (c.id === action.contact.id ? action.contact : c))
+          : [...state.contacts, action.contact],
+      }
+    }
+    case 'deleteContact':
+      return { ...state, contacts: state.contacts.filter((c) => c.id !== action.id) }
+    case 'addAlert':
+      if (state.alerts.some((a) => a.doseKey === action.alert.doseKey && a.level === action.alert.level)) return state
+      return { ...state, alerts: [action.alert, ...state.alerts].slice(0, 100) }
+    case 'resolveAlert':
+      return { ...state, alerts: state.alerts.map((a) => (a.id === action.id ? { ...a, resolvedAt: action.at } : a)) }
+    case 'addNote':
+      return { ...state, notes: [action.note, ...state.notes].slice(0, 50) }
+    case 'ackNote':
+      return { ...state, notes: state.notes.map((n) => (n.id === action.id ? { ...n, acknowledged: true } : n)) }
+    case 'readAlerts':
+      return { ...state, alerts: state.alerts.map((a) => ({ ...a, read: true })) }
+    case 'clockJump':
+      return { ...state, clock: { ...state.clock, offsetMs: state.clock.offsetMs + action.deltaMs } }
+    case 'clockSpeed': {
+      const sim = simulatedNow(state.clock, action.realNow)
+      return {
+        ...state,
+        clock: { speed: action.speed, anchorMs: action.realNow, offsetMs: sim - action.realNow },
+      }
+    }
+    case 'clockReset':
+      return { ...state, clock: { offsetMs: 0, speed: 1, anchorMs: action.realNow } }
+    case 'replace':
+      return action.state
+    case 'reset':
+      return seedState()
+  }
+}

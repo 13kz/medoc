@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:a11y": "node scripts/a11y.mjs",
-    "server": "node server/sync-server.ts"
+    "build:server": "vite build --ssr server/main.ts --outDir dist-server --emptyOutDir",
+    "server": "npm run build:server && node dist-server/main.js"
   },
   "dependencies": {
     "react": "^19.3.1",
