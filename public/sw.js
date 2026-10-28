@@ -19,6 +19,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
   const url = new URL(req.url)
+  // Le dossier partagé passe toujours par le réseau : jamais de copie périmée en cache.
+  if (url.pathname.startsWith('/api/')) return
   // Pages : le réseau d'abord pour avoir la dernière version, la copie locale hors ligne.
   if (req.mode === 'navigate') {
     event.respondWith(

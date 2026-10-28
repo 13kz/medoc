@@ -4149,6 +4149,15 @@ button.armed {
   border-radius: 0;
 }
 
+.sync-notice {
+  margin: 0;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  background: #2b2f36;
+  color: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
 .standalone .cg-tabs {
   padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
 }
