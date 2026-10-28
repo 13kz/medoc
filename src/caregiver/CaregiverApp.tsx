@@ -87,10 +87,11 @@ export function CaregiverApp() {
 
   return (
     <div className="cg">
+      <div role="alert" className="cg-banner-live">
       {banner && (
         <button
           className="cg-banner"
-          role="alert"
+          aria-label={`Medoc, maintenant ${banner}`}
           onClick={() => {
             setBanner(null)
             setTab('alertes')
@@ -105,6 +106,7 @@ export function CaregiverApp() {
           </span>
         </button>
       )}
+      </div>
 
       <header className="cg-head">
         <span className="cg-avatar" aria-hidden="true">

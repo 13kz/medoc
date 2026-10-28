@@ -34,13 +34,15 @@ export function PatientApp() {
   const mode = patient.displayMode
   const voiceFirst = mode === 'voix'
 
-  const [unlocked, setUnlocked] = useState(false)
+  const [unlocked, setUnlocked] = useState(patient.screenReader)
   const [flash, setFlash] = useState<{ kind: 'ok' | 'later'; text: string; undoKey?: string } | null>(null)
   const [listening, setListening] = useState(false)
   const [showDay, setShowDay] = useState(mode === 'standard')
   const announced = useRef(new Map<string, Dose['status']>())
 
-  const say = (text: string) => speak(text, patient.voiceRate)
+  // Avec un lecteur d'écran, les phrases passent par lui (zone annoncée) au lieu de la synthèse de l'appli.
+  const [spoken, setSpoken] = useState('')
+  const say = (text: string) => (patient.screenReader ? setSpoken(text) : speak(text, patient.voiceRate))
 
   // Annonce sonore et vocale dès qu'une prise devient due, puis à nouveau si elle passe en retard.
   const signature = pending.map((d) => `${d.key}:${d.status}`).join(',')
@@ -178,7 +180,7 @@ export function PatientApp() {
   const compartment = current ? pending.filter((d) => momentOf(d.time) === momentOf(current.time)) : []
 
   return (
-    <div className={`patient mode-${mode}`} style={{ '--tone': focusMoment.tone } as CSSProperties}>
+    <div className={`patient mode-${mode}`} style={{ '--tone': focusMoment.tone, '--text-scale': patient.textScale } as CSSProperties}>
       {!unlocked && (
         <button className="unlock" onClick={unlock}>
           <span className="unlock-ring">
@@ -400,7 +402,10 @@ export function PatientApp() {
         </section>
       )}
 
-      <div className="p-live" role="status" aria-live="assertive">
+      <p className="sr-only" aria-live="assertive">
+        {spoken}
+      </p>
+      <div className="p-live" role="status" aria-live={patient.screenReader ? 'off' : 'polite'}>
         {flash && (
           <div className={`p-flash ${flash.kind}`}>
             <Icon name={flash.kind === 'ok' ? 'check' : 'snooze'} size="1.3em" stroke={3} />

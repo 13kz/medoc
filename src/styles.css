@@ -584,7 +584,7 @@ button.armed {
   overscroll-behavior: contain;
   background: var(--bg);
   color: var(--fg);
-  font-size: calc(17px * var(--scale));
+  font-size: calc(17px * var(--scale) * var(--text-scale, 1));
   line-height: 1.3;
   padding: 6px 18px 26px;
   display: flex;
@@ -4091,4 +4091,41 @@ button.armed {
 .changelog .cl-meta {
   color: var(--ink-2);
   font-size: 12px;
+}
+
+/* Mouvement réduit : pas d'animation ni de transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Contraste renforcé : bords francs et textes secondaires aussi foncés que le texte principal. */
+@media (prefers-contrast: more) {
+  :root {
+    --ink-2: var(--ink);
+    --line-2: var(--ink);
+  }
+
+  .patient {
+    --fg-2: var(--fg);
+    --edge: var(--fg);
+  }
+
+  button,
+  input,
+  select {
+    border-width: 2px;
+  }
+}
+
+/* Focus clavier bien visible sur le téléphone du patient. */
+.patient :focus-visible {
+  outline-color: var(--go);
+  outline-width: 4px;
 }

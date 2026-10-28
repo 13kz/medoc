@@ -56,6 +56,40 @@ export function SettingsTab() {
             ))}
           </div>
         </fieldset>
+
+        {patient.displayMode !== 'voix' && (
+          <label className="field" htmlFor="text-scale">
+            <span>Taille du texte</span>
+            <select
+              id="text-scale"
+              value={patient.textScale}
+              onChange={(e) => dispatch({ type: 'patient', patch: { textScale: Number(e.target.value) } })}
+            >
+              {[
+                [1, 'Normale'],
+                [1.15, 'Grande'],
+                [1.3, 'Très grande'],
+                [1.5, 'Immense'],
+              ].map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="switch">
+          <span>
+            Utilise un lecteur d’écran
+            <small>VoiceOver ou TalkBack lit l’écran : Medoc ne parle plus par-dessus et lui confie ses annonces.</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={patient.screenReader}
+            onChange={(e) => dispatch({ type: 'patient', patch: { screenReader: e.target.checked } })}
+          />
+        </label>
       </div>
 
       <div className="group">

@@ -23,6 +23,8 @@ export function seedState(): AppState {
       tutoiement: true,
       autoRead: true,
       voiceRate: 0.9,
+      screenReader: false,
+      textScale: 1,
     },
     medications: [
       {
