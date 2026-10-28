@@ -16,6 +16,8 @@ import { useStore } from '../lib/store'
 import { asNeededAdvice, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
 import type { Dose, DoseStatus, Medication } from '../lib/types'
 import { AsNeededPanel } from './AsNeededPanel'
+import { GlucoseEntry } from './GlucoseEntry'
+import { doseText, formatGlucose, glucoseAdvice, needsGlucose, readingFor } from '../lib/glucose'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 
@@ -130,6 +132,17 @@ export function PatientApp() {
   }
 
   const current = pending[0]
+  // Prises dont la mesure a été passée (« je ne peux pas la mesurer ») : on garde la dose de l'ordonnance.
+  const [skipGlucose, setSkipGlucose] = useState<Set<string>>(new Set())
+  const askGlucose = current && needsGlucose(state, current) && !skipGlucose.has(current.key)
+  const reading = current ? readingFor(state, current.key) : undefined
+
+  const recordGlucose = (value: number) => {
+    if (!current) return
+    dispatch({ type: 'glucose', reading: { id: `g-${now}`, at: new Date(now).toISOString(), value, doseKey: current.key, by: 'patient' } })
+    vibrate()
+    say(glucoseAdvice(patient, settings, current.med, value))
+  }
   const note = state.notes.find((n) => !n.acknowledged)
 
   // Un nouveau message du médecin est annoncé et lu, comme une prise.
@@ -251,7 +264,13 @@ export function PatientApp() {
             <div className="p-med">
               {!voiceFirst && compartment.length <= 1 && <Pill med={current.med} size="xl" photo />}
               <h1 className="p-name">{current.med.name}</h1>
-              <p className="p-dose">{current.med.dose}</p>
+              <p className="p-dose">{doseText(current.med, reading)}</p>
+              {reading && (
+                <p className="p-instr">
+                  <Icon name="water" size="1.1em" />
+                  Glycémie {formatGlucose(reading.value)}
+                </p>
+              )}
               {current.med.instructions && (
                 <p className="p-instr">
                   <Icon name="info" size="1.1em" />
@@ -261,28 +280,37 @@ export function PatientApp() {
               {isLastDay(current.med, dayKey(current.at)) && <p className="p-instr p-last">Dernier jour du traitement</p>}
             </div>
           </div>
-          <div className="p-actions">
-            <button className="p-btn p-take" onClick={() => take(current)}>
-              <Icon name="check" size="1.3em" stroke={3.2} />
-              {voiceFirst ? 'C’est pris' : 'J’ai pris'}
-            </button>
-            <div className="p-row">
-              <button className="p-btn p-sec p-listen" onClick={repeat}>
-                <Icon name="speaker" size="1.2em" />
-                {voiceFirst ? 'Répéter' : 'Écouter'}
+          {askGlucose ? (
+            <GlucoseEntry
+              voiceFirst={voiceFirst}
+              onValue={recordGlucose}
+              onSkip={() => setSkipGlucose((k) => new Set(k).add(current.key))}
+              say={say}
+            />
+          ) : (
+            <div className="p-actions">
+              <button className="p-btn p-take" onClick={() => take(current)}>
+                <Icon name="check" size="1.3em" stroke={3.2} />
+                {voiceFirst ? 'C’est pris' : 'J’ai pris'}
               </button>
-              <button className="p-btn p-sec" onClick={() => later(current)}>
-                <Icon name="snooze" size="1.2em" />
-                Plus tard
-              </button>
+              <div className="p-row">
+                <button className="p-btn p-sec p-listen" onClick={repeat}>
+                  <Icon name="speaker" size="1.2em" />
+                  {voiceFirst ? 'Répéter' : 'Écouter'}
+                </button>
+                <button className="p-btn p-sec" onClick={() => later(current)}>
+                  <Icon name="snooze" size="1.2em" />
+                  Plus tard
+                </button>
+              </div>
+              {canListen() && (
+                <button className={`p-btn p-ghost ${listening ? 'on' : ''}`} onClick={listen} aria-pressed={listening}>
+                  <Icon name="mic" size="1.1em" />
+                  {listening ? 'J’écoute…' : 'Répondre à voix haute'}
+                </button>
+              )}
             </div>
-            {canListen() && (
-              <button className={`p-btn p-ghost ${listening ? 'on' : ''}`} onClick={listen} aria-pressed={listening}>
-                <Icon name="mic" size="1.1em" />
-                {listening ? 'J’écoute…' : 'Répondre à voix haute'}
-              </button>
-            )}
-          </div>
+          )}
         </section>
       ) : (
         <section className="p-now calm" aria-label="Rien à prendre maintenant">

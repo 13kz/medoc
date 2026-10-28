@@ -5,6 +5,7 @@ import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
 import { asNeededLabel, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
 import { refills, stockLabel } from '../lib/stock'
+import { formatGlucose, readingFor } from '../lib/glucose'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
 import { MOMENTS, adherence, dayKey, dosesForDay, rhythmLabel, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
@@ -203,6 +204,7 @@ export function CaregiverApp() {
                                 : d.status === 'reporte' && d.snoozedUntil
                                   ? `, rappel à ${formatTime(d.snoozedUntil)}`
                                   : `, ${d.med.dose}`}
+                              {readingFor(state, d.key) && `, glycémie ${formatGlucose(readingFor(state, d.key)!.value)}`}
                             </span>
                           </span>
                           {d.status === 'pris' ? (

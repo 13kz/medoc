@@ -3732,3 +3732,165 @@ button.armed {
   font-size: 12.5px;
   color: var(--ink-2);
 }
+
+/* Glycémie avant la prise */
+.p-glu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.p-glu-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  font-size: 1.15em;
+  font-weight: 800;
+}
+
+.p-glu-display {
+  display: block;
+  padding: 0.4em;
+  border-radius: 18px;
+  background: var(--card-2);
+  font-family: var(--mono);
+  font-size: 2em;
+  font-weight: 800;
+  text-align: center;
+}
+
+.p-glu-display.empty {
+  color: var(--fg-2);
+  font-size: 1.2em;
+  padding: 0.95em;
+}
+
+.p-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.p-keypad button {
+  min-height: 60px;
+  font-family: var(--mono);
+  font-size: 1.6em;
+  font-weight: 800;
+  background: var(--card-2);
+  color: var(--fg);
+  border: 0;
+}
+
+.p-take:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.scale ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scale li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.scale input {
+  width: 64px;
+}
+
+.scale .muted {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Courbe des glycémies (tablette du médecin) */
+.dr-glu {
+  grid-column: 1 / -1;
+}
+
+.glu-chart {
+  position: relative;
+  margin: 0;
+}
+
+.glu-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.glu-band {
+  fill: var(--green-soft);
+}
+
+.glu-grid {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+
+.glu-axis {
+  fill: var(--ink-2);
+  font-size: 11px;
+}
+
+.glu-line {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.glu-dot {
+  fill: var(--green);
+  stroke: var(--surface, #fff);
+  stroke-width: 2;
+}
+
+.glu-dot.lv-hypo,
+.glu-dot.lv-hyper {
+  fill: var(--red);
+}
+
+.glu-tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--surface, #fff);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dr-glu-out {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.dr-glu-out li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dr-glu-out .icon {
+  color: var(--red);
+}

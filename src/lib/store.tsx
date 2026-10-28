@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useReducer, type ReactNode } from
 import { parseStored } from './migrate'
 import { consume, medIdOf } from './stock'
 import { seedState } from './seed'
-import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note, Patient, Settings } from './types'
+import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
 /** Copie de ce qui n'a pas pu être relu tel quel, pour ne jamais perdre une ordonnance. */
@@ -14,6 +14,7 @@ export type Action =
   | { type: 'takeAsNeeded'; intake: AsNeededIntake }
   | { type: 'untakeAsNeeded'; id: string }
   | { type: 'restock'; medId: string }
+  | { type: 'glucose'; reading: GlucoseReading }
   | { type: 'snooze'; doseKey: string; until: number }
   | { type: 'upsertMed'; med: Medication }
   | { type: 'deleteMed'; id: string }
@@ -72,6 +73,11 @@ export function reducer(state: AppState, action: Action): AppState {
         asNeededIntakes: state.asNeededIntakes.filter((i) => i.id !== action.id),
       }
     }
+    case 'glucose':
+      return {
+        ...state,
+        glucose: [action.reading, ...state.glucose.filter((g) => !action.reading.doseKey || g.doseKey !== action.reading.doseKey)].slice(0, 500),
+      }
     case 'restock':
       return {
         ...state,

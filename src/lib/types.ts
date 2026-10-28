@@ -26,6 +26,27 @@ export interface Medication {
   stock?: Stock
   /** Photo de la boîte, réduite (data URL JPEG). */
   photo?: string
+  /** Glycémie à mesurer avant la prise, et dose qui en dépend (insuline). */
+  glucose?: GlucoseRule
+}
+
+export interface GlucoseRule {
+  /**
+   * Schéma de dose défini par le médecin, par paliers croissants : la première marche dont `max`
+   * (en g/L, exclu) dépasse la glycémie donne le nombre d'unités ; `max` null = au-delà.
+   * Vide : la dose de l'ordonnance ne change pas.
+   */
+  scale: { max: number | null; units: number }[]
+}
+
+export interface GlucoseReading {
+  id: string
+  at: string
+  /** En g/L. */
+  value: number
+  /** La prise avant laquelle la mesure a été faite. */
+  doseKey?: string
+  by: 'patient' | 'aidant'
 }
 
 export interface Stock {
@@ -121,6 +142,10 @@ export interface Settings {
   snoozeMin: number
   /** Prévenir l'aidant quand il reste moins de ce nombre de jours de traitement. */
   refillDays: number
+  /** Glycémie basse (hypoglycémie) en dessous de cette valeur, en g/L. */
+  hypoBelow: number
+  /** Glycémie haute (hyperglycémie) au-dessus de cette valeur, en g/L. */
+  hyperAbove: number
   /** Ne pas alerter les proches la nuit : les alertes partent à la fin des heures calmes. */
   quietHours: boolean
   quietFrom: string
@@ -147,7 +172,7 @@ export interface Note {
 }
 
 export interface AppState {
-  version: 4
+  version: 5
   patient: Patient
   medications: Medication[]
   contacts: Contact[]
@@ -156,6 +181,8 @@ export interface AppState {
   intakes: Record<string, Intake>
   /** Prises des médicaments « si besoin », les plus récentes d'abord. */
   asNeededIntakes: AsNeededIntake[]
+  /** Glycémies mesurées, les plus récentes d'abord. */
+  glucose: GlucoseReading[]
   /** Reports en cours, indexés par clé de dose, valeur = ISO de fin. */
   snoozes: Record<string, string>
   alerts: Alert[]
