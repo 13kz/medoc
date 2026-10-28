@@ -20,6 +20,13 @@ const SCENARIOS = [
   { name: 'aidant, réglages', view: 'aidant', time: '09:10', steps: ['.cg-tabs button:nth-child(4)'] },
   { name: 'aidant, historique', view: 'aidant', time: '09:10', steps: ['.cg-week .ghost'] },
   { name: 'médecin', view: 'medecin', time: '09:10' },
+  { name: 'aidant, scan d’ordonnance', view: 'aidant', time: '09:10', steps: ['.cg-tabs button:nth-child(2)', '.cg-section-head + .secondary'] },
+  {
+    name: 'aidant, relecture du scan',
+    view: 'aidant',
+    time: '09:10',
+    steps: ['.cg-tabs button:nth-child(2)', '.cg-section-head + .secondary', { fill: '#scan-text', text: 'Levothyrox 75 µg\nselon bilan\nAmoxicilline 1 g : 1 cp 2 fois par jour pendant 7 jours' }, '.scan .secondary.block:last-of-type'],
+  },
   { name: 'aidant installé, partage', view: 'aidant', time: '09:10', path: 'aidant', steps: ['.cg-tabs button:nth-child(4)'] },
   { name: 'rejoindre un dossier', view: 'patient', time: '09:10', path: 'rejoindre?invitation=ABCD2345' },
 ]
@@ -51,6 +58,10 @@ for (const sc of SCENARIOS) {
   else await page.reload()
   await page.waitForTimeout(600)
   for (const sel of sc.steps ?? []) {
+    if (typeof sel === 'object') {
+      await page.locator(sel.fill).fill(sel.text)
+      continue
+    }
     await page.locator(sel).first().click()
     await page.waitForTimeout(300)
   }

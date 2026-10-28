@@ -14,6 +14,7 @@ import { MOMENTS, adherence, dayKey, dosesForDay, rhythmLabel, weekGrid, formatD
 import { useStore } from '../lib/store'
 import type { DisplayMode, DoseStatus, Medication } from '../lib/types'
 import { MedEditor } from './MedEditor'
+import { PrescriptionScan } from './PrescriptionScan'
 import { PushOffer } from './PushOffer'
 import { SettingsTab } from './SettingsTab'
 
@@ -65,6 +66,7 @@ export function CaregiverApp() {
     }
   }, [tab])
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
+  const [scanning, setScanning] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
   const [history, setHistory] = useState(false)
   // L'aidant qui tient ce téléphone : le premier proche de la famille.
@@ -326,6 +328,10 @@ export function CaregiverApp() {
                 Ajouter
               </button>
             </div>
+            <button className="secondary block" onClick={() => setScanning(true)}>
+              <Icon name="list" size={18} />
+              Scanner une ordonnance
+            </button>
             <ul className="cg-list">
               {state.medications.map((m) => (
                 <li key={m.id} className={`cg-med ${m.active ? '' : 'inactive'}`}>
@@ -432,6 +438,13 @@ export function CaregiverApp() {
 
       {history && <HistoryView now={now} onClose={() => setHistory(false)} />}
 
+      {scanning && (
+        <PrescriptionScan
+          now={now}
+          onClose={() => setScanning(false)}
+          onSave={(med) => dispatch({ type: 'upsertMed', med, by: caregiverName, at: now })}
+        />
+      )}
       {editing && (
         <MedEditor
           med={editing === 'new' ? undefined : editing}

@@ -4264,6 +4264,122 @@ button.armed {
   color: var(--green-strong);
 }
 
+/* Scan d'ordonnance */
+.scan-reading {
+  display: grid;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.scan-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line-2);
+  overflow: hidden;
+}
+
+.scan-bar span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  transition: width 0.2s;
+}
+
+.scan-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scan-line {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
+.scan-line.is-ajoute {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.scan-line.is-ignore {
+  opacity: 0.6;
+}
+
+.scan-line-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.scan-line-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scan-line-text span {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.scan-issues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--amber-ink, #8a4b00);
+}
+
+.scan-issues li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scan-raw {
+  margin: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--line-2);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.scan-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.scan-actions .primary {
+  flex: 1;
+}
+
+.scan-done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 700;
+  color: var(--green-strong);
+}
+
+.scan-text summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 0;
+}
+
 /* Partage du dossier (réglages de l'aidant) */
 button.compact {
   min-height: 36px;

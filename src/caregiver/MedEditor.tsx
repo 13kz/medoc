@@ -41,19 +41,22 @@ const DOSE_HINT: Record<MedForm, string> = {
 /** Feuille de saisie d'un médicament, ouverte depuis le bas de l'écran. */
 export function MedEditor({
   med,
+  draft: proposed,
   now,
   onSave,
   onClose,
   onDelete,
 }: {
   med?: Medication
+  /** Proposition pour un nouveau médicament (scan d'ordonnance), à relire avant d'enregistrer. */
+  draft?: Medication
   now: number
   onSave: (m: Medication) => void
   onClose: () => void
   onDelete: (id: string) => void
 }) {
   const [draft, setDraft] = useState<Medication>(
-    med ?? {
+    med ?? proposed ?? {
       id: `med-${Date.now().toString(36)}`,
       name: '',
       form: 'comprime',
