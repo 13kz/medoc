@@ -13,7 +13,7 @@ export function offsetTo(hhmm: string, real = Date.now()): number {
 export function seedState(): AppState {
   const real = Date.now()
   const state: AppState = {
-    version: 5,
+    version: 6,
     patient: {
       name: 'Maman',
       fullName: 'Mireille Benali',
@@ -117,6 +117,7 @@ export function seedState(): AppState {
     snoozes: {},
     alerts: [],
     notes: [],
+    changes: [],
     clock: { offsetMs: offsetTo('07:55', real), speed: 1, anchorMs: real },
   }
   // L'ordonnance a commencé il y a six jours : pas d'oublis fictifs avant, dans l'historique sur 30 jours.

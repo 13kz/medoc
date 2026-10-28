@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
+import { ChangeLog } from '../components/ChangeLog'
 import { HistoryView } from '../components/HistoryView'
 import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
@@ -45,6 +46,8 @@ export function CaregiverApp() {
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [history, setHistory] = useState(false)
+  // L'aidant qui tient ce téléphone : le premier proche de la famille.
+  const caregiverName = state.contacts.find((c) => c.role === 'famille')?.name ?? 'Un proche'
   const doses = dosesForDay(state, now)
   const alerts = deliveredAlerts(state, now)
   const unread = alerts.filter((a) => !a.read).length
@@ -333,6 +336,7 @@ export function CaregiverApp() {
                 </li>
               ))}
             </ul>
+            <ChangeLog changes={state.changes} />
           </section>
         )}
 
@@ -411,11 +415,11 @@ export function CaregiverApp() {
           now={now}
           onClose={() => setEditing(null)}
           onSave={(med) => {
-            dispatch({ type: 'upsertMed', med })
+            dispatch({ type: 'upsertMed', med, by: caregiverName, at: now })
             setEditing(null)
           }}
           onDelete={(id) => {
-            dispatch({ type: 'deleteMed', id })
+            dispatch({ type: 'deleteMed', id, by: caregiverName, at: now })
             setEditing(null)
           }}
         />

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { diffMed } from './changes'
 import { parseStored } from './migrate'
 import { consume, medIdOf } from './stock'
 import { seedState } from './seed'
@@ -16,8 +17,10 @@ export type Action =
   | { type: 'restock'; medId: string }
   | { type: 'glucose'; reading: GlucoseReading }
   | { type: 'snooze'; doseKey: string; until: number }
-  | { type: 'upsertMed'; med: Medication }
-  | { type: 'deleteMed'; id: string }
+  /** `by` et `at` : qui fait le changement et quand, pour le journal du traitement. */
+  | { type: 'upsertMed'; med: Medication; by?: string; at?: number }
+  | { type: 'deleteMed'; id: string; by?: string; at?: number }
+  | { type: 'ackChange'; id: string }
   | { type: 'patient'; patch: Partial<Patient> }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'upsertContact'; contact: Contact }
@@ -36,6 +39,23 @@ export type Action =
 /** Heure simulée correspondant à l'instant réel `real`. */
 export function simulatedNow(clock: AppState['clock'], real: number): number {
   return real + clock.offsetMs + (real - clock.anchorMs) * (clock.speed - 1)
+}
+
+/** Ajoute au journal ce qui a changé dans l'ordonnance, quand on sait qui l'a fait. */
+function logChange(state: AppState, before: Medication | undefined, after: Medication | undefined, who: { by?: string; at?: number }): AppState {
+  const med = after ?? before
+  const diff = who.by && who.at !== undefined && med ? diffMed(before, after) : null
+  if (!diff || !med) return state
+  const change = {
+    id: `ch-${med.id}-${who.at}`,
+    at: new Date(who.at!).toISOString(),
+    by: who.by!,
+    medId: med.id,
+    medName: med.name,
+    acknowledged: false,
+    ...diff,
+  }
+  return { ...state, changes: [change, ...state.changes].slice(0, 200) }
 }
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -91,16 +111,21 @@ export function reducer(state: AppState, action: Action): AppState {
         snoozes: { ...state.snoozes, [action.doseKey]: new Date(action.until).toISOString() },
       }
     case 'upsertMed': {
-      const exists = state.medications.some((m) => m.id === action.med.id)
+      const before = state.medications.find((m) => m.id === action.med.id)
+      const exists = !!before
       return {
-        ...state,
+        ...logChange(state, before, action.med, action),
         medications: exists
           ? state.medications.map((m) => (m.id === action.med.id ? action.med : m))
           : [...state.medications, action.med],
       }
     }
-    case 'deleteMed':
-      return { ...state, medications: state.medications.filter((m) => m.id !== action.id) }
+    case 'deleteMed': {
+      const before = state.medications.find((m) => m.id === action.id)
+      return { ...logChange(state, before, undefined, action), medications: state.medications.filter((m) => m.id !== action.id) }
+    }
+    case 'ackChange':
+      return { ...state, changes: state.changes.map((c) => (c.id === action.id ? { ...c, acknowledged: true } : c)) }
     case 'patient':
       return { ...state, patient: { ...state.patient, ...action.patch } }
     case 'settings':

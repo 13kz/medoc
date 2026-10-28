@@ -1,8 +1,8 @@
 import { isPhoto } from './photo'
 import { seedState } from './seed'
-import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note } from './types'
+import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note, TreatmentChange } from './types'
 
-export const CURRENT_VERSION = 5
+export const CURRENT_VERSION = 6
 
 type Raw = Record<string, unknown>
 
@@ -25,6 +25,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   3: (s) => ({ ...s, asNeededIntakes: [] }),
   // v4 : pas encore de glycémies.
   4: (s) => ({ ...s, glucose: [] }),
+  // v5 : pas encore de journal des changements.
+  5: (s) => ({ ...s, changes: [] }),
 }
 
 export interface Loaded {
@@ -184,6 +186,21 @@ const fixNote = (x: unknown): Note | null =>
     ? { id: x.id, text: x.text, at: isStr(x.at) ? x.at : '', from: isStr(x.from) ? x.from : '', acknowledged: x.acknowledged === true }
     : null
 
+const KINDS = ['ajout', 'modif', 'arret', 'reprise', 'suppression'] as const
+const fixChange = (x: unknown): TreatmentChange | null =>
+  isObj(x) && isStr(x.id) && fixIso(x.at) && isStr(x.by) && isStr(x.medId) && isStr(x.medName) && KINDS.includes(x.kind as never)
+    ? {
+        id: x.id,
+        at: x.at as string,
+        by: x.by,
+        medId: x.medId,
+        medName: x.medName,
+        kind: x.kind as TreatmentChange['kind'],
+        details: Array.isArray(x.details) ? x.details.filter(isStr) : [],
+        acknowledged: x.acknowledged === true,
+      }
+    : null
+
 /**
  * Transforme ce qui a été lu (stockage local, autre onglet, serveur) en état valide de la version courante.
  * Retourne null si rien n'est récupérable.
@@ -219,6 +236,7 @@ export function migrate(input: unknown, real = Date.now()): Loaded | null {
     snoozes: keepRecord(raw.snoozes, fixIso, flag),
     alerts: keep(raw.alerts, fixAlert, flag),
     notes: keep(raw.notes, fixNote, flag),
+    changes: keep(raw.changes, fixChange, flag),
     clock,
   }
   return { state, repaired }

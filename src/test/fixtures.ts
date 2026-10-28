@@ -20,6 +20,7 @@ export function makeState(patch: Partial<AppState> = {}): AppState {
     snoozes: {},
     alerts: [],
     notes: [],
+    changes: [],
     clock: { offsetMs: 0, speed: 1, anchorMs: 0 },
     ...patch,
   }
