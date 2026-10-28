@@ -1,0 +1,19 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_MEDOC_URL": "http://192.168.1.10:5173/patient" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_MEDOC_URL": "https://preview.medoc.app/patient" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_MEDOC_URL": "https://medoc.app/patient" }
+    }
+  },
+  "submit": { "production": {} }
+}

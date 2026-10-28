@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CaregiverApp } from './caregiver/CaregiverApp'
 import { DemoClock } from './components/DemoClock'
 import { DeviceFrame } from './components/DeviceFrame'
 import { Icon } from './components/Icon'
+import { actionsFromNative, onNativeMessage } from './lib/bridge'
 import { useNow } from './lib/clock'
+import { isNative, nativeReady, scheduleReminders } from './lib/platform'
+import { remindersSignature, upcomingReminders } from './lib/reminders'
 import { planAlerts, deliveredAlerts } from './lib/alerts'
 import { roleFromLocation, applyRoleManifest, type Role } from './lib/pwa'
 import { currentLink, removeLink, saveLink, type Link } from './lib/links'
@@ -145,6 +148,29 @@ function Shell() {
   )
 }
 
+/** Coque mobile : rappels programmés à l'avance, et réponses aux notifications. */
+function NativeBridge() {
+  const { state, dispatch } = useStore()
+  const now = useNow()
+  const latest = useRef(state)
+  latest.current = state
+  useEffect(() => {
+    if (!isNative()) return
+    const off = onNativeMessage((msg) => {
+      for (const action of actionsFromNative(msg, latest.current)) dispatch(action)
+    })
+    nativeReady()
+    return off
+  }, [dispatch])
+
+  const reminders = isNative() ? upcomingReminders(state, now) : []
+  const signature = remindersSignature(reminders)
+  useEffect(() => {
+    if (isNative()) scheduleReminders(reminders)
+  }, [signature])
+  return null
+}
+
 /** Bandeau discret quand l'appareil ne joint plus le dossier partagé. */
 function SyncNotice() {
   const { sync } = useStore()
@@ -189,6 +215,7 @@ function Standalone({ role }: { role: Role }) {
   return (
     <div className={`standalone device-${variant}`}>
       <AlertEngine />
+      {role === 'patient' && <NativeBridge />}
       <SyncNotice />
       <div className="device-glass">
         <div className="device-screen">{role === 'patient' ? <PatientApp /> : role === 'aidant' ? <CaregiverApp /> : <DoctorApp />}</div>

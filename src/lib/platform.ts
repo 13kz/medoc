@@ -6,12 +6,17 @@
  */
 
 import { webNotify } from './pwa'
+import type { Reminder } from './reminders'
 
 type NativeMessage =
   | { type: 'speak'; text: string; rate: number }
   | { type: 'stopSpeaking' }
   | { type: 'notify'; title: string; body: string }
   | { type: 'vibrate' }
+  /** Remplace tous les rappels programmés sur le téléphone. */
+  | { type: 'schedule'; reminders: Reminder[] }
+  /** La page écoute `window.medocNative` : la coque peut envoyer les réponses en attente. */
+  | { type: 'ready' }
 
 interface RNWebView {
   postMessage(message: string): void
@@ -65,6 +70,11 @@ export function systemNotify(title: string, body: string, tag?: string): void {
   if (post({ type: 'notify', title, body })) return
   void webNotify(title, body, { tag })
 }
+
+/** Programme les rappels dans la coque mobile ; sans effet dans un navigateur. */
+export const scheduleReminders = (reminders: Reminder[]) => post({ type: 'schedule', reminders })
+
+export const nativeReady = () => post({ type: 'ready' })
 
 let audio: AudioContext | undefined
 
