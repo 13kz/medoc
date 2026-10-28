@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
+import { HistoryView } from '../components/HistoryView'
 import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
 import { asNeededLabel, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
@@ -43,6 +44,7 @@ export function CaregiverApp() {
   const [tab, setTab] = useState<Tab>('jour')
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [history, setHistory] = useState(false)
   const doses = dosesForDay(state, now)
   const alerts = deliveredAlerts(state, now)
   const unread = alerts.filter((a) => !a.read).length
@@ -281,6 +283,10 @@ export function CaregiverApp() {
                 <span>{pctWeek === null ? '' : `${Math.round(pctWeek * 100)} % des prises faites`}</span>
               </h2>
               <WeekBox week={week} caption={`Semainier de ${state.patient.name} sur 7 jours`} />
+              <button className="ghost block" onClick={() => setHistory(true)}>
+                Historique sur 30 jours, impression et export
+                <Icon name="chevron" size={16} />
+              </button>
             </section>
             {doses.length === 0 && <p className="cg-empty">Aucune prise prévue. Ajoutez des médicaments dans l’ordonnance.</p>}
           </section>
@@ -396,6 +402,8 @@ export function CaregiverApp() {
           </button>
         ))}
       </nav>
+
+      {history && <HistoryView now={now} onClose={() => setHistory(false)} />}
 
       {editing && (
         <MedEditor

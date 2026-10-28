@@ -119,6 +119,11 @@ export function seedState(): AppState {
     notes: [],
     clock: { offsetMs: offsetTo('07:55', real), speed: 1, anchorMs: real },
   }
+  // L'ordonnance a commencé il y a six jours : pas d'oublis fictifs avant, dans l'historique sur 30 jours.
+  const start = new Date(real + state.clock.offsetMs)
+  start.setDate(start.getDate() - 6)
+  start.setHours(0, 0, 0, 0)
+  for (const m of state.medications) m.since = start.toISOString()
   state.intakes = pastWeek(state, real + state.clock.offsetMs)
   state.glucose = pastGlucose(state, real + state.clock.offsetMs)
   return state

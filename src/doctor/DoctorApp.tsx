@@ -4,6 +4,7 @@ import { asNeededLabel } from '../lib/asNeeded'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { GlucoseChart } from '../components/GlucoseChart'
+import { HistoryView } from '../components/HistoryView'
 import { WeekBox } from '../components/WeekBox'
 import { formatGlucose, glucoseLevel, glucoseWeek } from '../lib/glucose'
 import { useNow } from '../lib/clock'
@@ -51,6 +52,7 @@ export function DoctorApp() {
   const [showList, setShowList] = useState(true)
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [draft, setDraft] = useState('')
+  const [history, setHistory] = useState(false)
 
   const doctorName = state.contacts.find((c) => c.role === 'medecin')?.name ?? 'Dr Martin'
   const liveWeek = weekGrid(state, now)
@@ -169,6 +171,11 @@ export function DoctorApp() {
               </p>
             </div>
             <WeekBox week={current.week} caption={`Semainier de ${current.fullName} sur 7 jours`} />
+            {isLive && (
+              <button className="dr-link" onClick={() => setHistory(true)}>
+                Historique sur 30 jours, impression et export
+              </button>
+            )}
           </section>
 
           <section className="dr-panel">
@@ -290,6 +297,7 @@ export function DoctorApp() {
         </div>
       </section>
 
+      {history && <HistoryView now={now} onClose={() => setHistory(false)} />}
       {editing && (
         <MedEditor
           med={editing === 'new' ? undefined : editing}
