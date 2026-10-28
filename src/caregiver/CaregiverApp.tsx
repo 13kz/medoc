@@ -3,6 +3,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { WeekBox } from '../components/WeekBox'
 import { deliveredAlerts, resolvedMessage } from '../lib/alerts'
+import { asNeededLabel, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
 import { useNow } from '../lib/clock'
 import { systemNotify, vibrate } from '../lib/platform'
 import { MOMENTS, adherence, dosesForDay, rhythmLabel, weekGrid, formatDuration, formatTime, momentOf, nextUpcoming, spokenTime } from '../lib/schedule'
@@ -217,6 +218,48 @@ export function CaregiverApp() {
                 )
               })}
             </ol>
+            {asNeededMeds(state).length > 0 && (
+              <section className="cg-prn" aria-label="Si besoin, dernières 24 heures">
+                <h2 className="cg-week-title">Si besoin, dernières 24 h</h2>
+                <ul className="cg-rows">
+                  {asNeededMeds(state).map((m) => {
+                    const st = asNeededStatus(state, m, now)
+                    return (
+                      <li key={m.id} className="cg-dose">
+                        <Pill med={m} size="sm" />
+                        <span className="cg-dose-text">
+                          <strong>{m.name}</strong>
+                          <span className="cg-meta">
+                            {st.recent.length === 0
+                              ? 'Pas pris'
+                              : `${st.recent.length} fois : ${st.recent
+                                  .map((i) => `${formatTime(Date.parse(i.takenAt))}${i.by === 'aidant' ? ' (vous)' : ''}`)
+                                  .reverse()
+                                  .join(', ')}`}
+                          </span>
+                          {st.recent.some((i) => i.early) && (
+                            <span className="cg-meta cg-warn">Pris au moins une fois trop tôt ou au-delà du maximum.</span>
+                          )}
+                        </span>
+                        <button
+                          className="cg-act"
+                          aria-label={`Noter une prise de ${m.name}`}
+                          title="Noter une prise"
+                          onClick={() =>
+                            dispatch({
+                              type: 'takeAsNeeded',
+                              intake: { id: `${m.id}|${now}`, medId: m.id, takenAt: new Date(now).toISOString(), by: 'aidant', early: !st.allowed },
+                            })
+                          }
+                        >
+                          <Icon name="plus" size={20} stroke={2.4} />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
             <section className="cg-week" aria-label="Cette semaine">
               <h2 className="cg-week-title">
                 Cette semaine
@@ -248,9 +291,9 @@ export function CaregiverApp() {
                         {m.dose}
                         {m.instructions && `, ${m.instructions.charAt(0).toLowerCase()}${m.instructions.slice(1)}`}
                       </span>
-                      {m.active && <span className="cg-meta">{rhythmLabel(m)}</span>}
+                      {m.active && <span className="cg-meta">{m.asNeeded ? asNeededLabel(m) : rhythmLabel(m)}</span>}
                       <span className="cg-times">
-                        {m.active ? (
+                        {m.asNeeded ? null : m.active ? (
                           [...m.times].sort().map((t) => (
                             <span key={t} className="time-chip">
                               {t}

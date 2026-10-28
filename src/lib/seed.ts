@@ -13,7 +13,7 @@ export function offsetTo(hhmm: string, real = Date.now()): number {
 export function seedState(): AppState {
   const real = Date.now()
   const state: AppState = {
-    version: 3,
+    version: 4,
     patient: {
       name: 'Maman',
       fullName: 'Mireille Benali',
@@ -84,6 +84,17 @@ export function seedState(): AppState {
         color: '#8e5bd6',
         active: true,
       },
+      {
+        id: 'doliprane',
+        name: 'Doliprane 1000 mg',
+        form: 'comprime',
+        dose: '1 comprimé',
+        times: [],
+        instructions: 'En cas de douleur',
+        color: '#ffffff',
+        active: true,
+        asNeeded: { maxPerDay: 3, minGapH: 6 },
+      },
     ],
     contacts: [
       { id: 'fils', name: 'Naz (fils)', role: 'famille', notify: true },
@@ -92,6 +103,7 @@ export function seedState(): AppState {
     ],
     settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
     intakes: {},
+    asNeededIntakes: [],
     snoozes: {},
     alerts: [],
     notes: [],

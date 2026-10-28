@@ -20,6 +20,25 @@ export interface Medication {
   startDate?: string
   /** Dernier jour du traitement, inclus (AAAA-MM-JJ). */
   endDate?: string
+  /** À prendre à la demande, sans heure fixe : `times` est alors ignoré. */
+  asNeeded?: AsNeeded
+}
+
+export interface AsNeeded {
+  /** Nombre maximal de prises sur 24 heures glissantes. */
+  maxPerDay: number
+  /** Écart minimal entre deux prises, en heures. */
+  minGapH: number
+}
+
+/** Prise d'un médicament « si besoin ». */
+export interface AsNeededIntake {
+  id: string
+  medId: string
+  takenAt: string
+  by: 'patient' | 'aidant'
+  /** Prise faite malgré l'écart minimal ou le maximum. */
+  early: boolean
 }
 
 export type Rhythm =
@@ -113,13 +132,15 @@ export interface Note {
 }
 
 export interface AppState {
-  version: 3
+  version: 4
   patient: Patient
   medications: Medication[]
   contacts: Contact[]
   settings: Settings
   /** Prises confirmées, indexées par clé de dose. */
   intakes: Record<string, Intake>
+  /** Prises des médicaments « si besoin », les plus récentes d'abord. */
+  asNeededIntakes: AsNeededIntake[]
   /** Reports en cours, indexés par clé de dose, valeur = ISO de fin. */
   snoozes: Record<string, string>
   alerts: Alert[]

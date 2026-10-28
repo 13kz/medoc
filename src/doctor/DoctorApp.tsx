@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MedEditor } from '../caregiver/MedEditor'
+import { asNeededLabel } from '../lib/asNeeded'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { WeekBox } from '../components/WeekBox'
@@ -203,7 +204,12 @@ export function DoctorApp() {
                     <span className="dr-med-text">
                       <strong>{m.name}</strong>
                       <span>
-                        {m.dose}, {m.active ? `${[...m.times].sort().map(spokenTime).join(' et ')}, ${rhythmLabel(m).toLowerCase()}` : 'suspendu'}
+                        {m.dose},{' '}
+                        {!m.active
+                          ? 'suspendu'
+                          : m.asNeeded
+                            ? asNeededLabel(m).toLowerCase()
+                            : `${[...m.times].sort().map(spokenTime).join(' et ')}, ${rhythmLabel(m).toLowerCase()}`}
                       </span>
                     </span>
                     <button className="dr-link" onClick={() => setEditing(m)}>

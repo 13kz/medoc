@@ -69,7 +69,8 @@ export function MedEditor({
   const setRhythm = (r: Rhythm) => set({ rhythm: r.kind === 'daily' ? undefined : r })
   const validRhythm = rhythm.kind !== 'weekdays' || rhythm.days.length > 0
   const validDates = !draft.startDate || !draft.endDate || draft.startDate <= draft.endDate
-  const valid = draft.name.trim() !== '' && draft.dose.trim() !== '' && times.length > 0 && validRhythm && validDates
+  const prn = draft.asNeeded
+  const valid = draft.name.trim() !== '' && draft.dose.trim() !== '' && (prn || times.length > 0) && validRhythm && validDates
   const durationDays = draft.endDate ? Math.round((Date.parse(draft.endDate) - Date.parse(draft.startDate ?? today)) / 86400000) + 1 : null
 
   return (
@@ -83,7 +84,7 @@ export function MedEditor({
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
         onSubmit={(e) => {
           e.preventDefault()
-          if (valid) onSave({ ...draft, name: draft.name.trim(), times, instructions: draft.instructions?.trim() || undefined })
+          if (valid) onSave({ ...draft, name: draft.name.trim(), times: prn ? [] : times, instructions: draft.instructions?.trim() || undefined })
         }}
       >
         <div className="sheet-head">
@@ -129,108 +130,148 @@ export function MedEditor({
           <input value={draft.dose} placeholder={DOSE_HINT[draft.form]} onChange={(e) => set({ dose: e.target.value })} />
         </label>
 
-        <fieldset className="field">
-          <legend>Heures de prise</legend>
-          <div className="chips">
-            {QUICK_TIMES.map((q) => {
-              const on = times.includes(q.time)
-              return (
-                <button
-                  type="button"
-                  key={q.time}
-                  aria-pressed={on}
-                  onClick={() => set({ times: on ? times.filter((t) => t !== q.time) : [...times, q.time] })}
-                >
-                  {q.label} {q.time}
-                </button>
-              )
-            })}
-          </div>
-          <ul className="times">
-            {times.map((t) => (
-              <li key={t}>
-                <input
-                  type="time"
-                  value={t}
-                  aria-label="Heure"
-                  onChange={(e) => e.target.value && set({ times: times.map((x) => (x === t ? e.target.value : x)) })}
-                />
-                <button type="button" className="ghost" aria-label={`Retirer ${t}`} onClick={() => set({ times: times.filter((x) => x !== t) })}>
-                  <Icon name="close" size={18} />
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => {
-              const free = ['09:00', '14:00', '16:00', '18:00', '20:00'].find((x) => !times.includes(x)) ?? '10:00'
-              set({ times: [...times, free] })
-            }}
-          >
-            <Icon name="plus" size={18} />
-            Autre heure
-          </button>
-        </fieldset>
+        <label className="switch">
+          <span>
+            Si besoin
+            <small>Sans heure fixe : la personne le prend à la demande (douleur, fièvre…).</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={!!prn}
+            onChange={(e) => set({ asNeeded: e.target.checked ? { maxPerDay: 3, minGapH: 6 } : undefined })}
+          />
+        </label>
 
-        <fieldset className="field">
-          <legend>Jours de prise</legend>
-          <div className="chips">
-            <button type="button" aria-pressed={rhythm.kind === 'daily'} onClick={() => setRhythm({ kind: 'daily' })}>
-              Tous les jours
-            </button>
-            <button
-              type="button"
-              aria-pressed={rhythm.kind === 'weekdays'}
-              onClick={() => rhythm.kind !== 'weekdays' && setRhythm({ kind: 'weekdays', days: [new Date(now).getDay()] })}
-            >
-              Certains jours
-            </button>
-            <button
-              type="button"
-              aria-pressed={rhythm.kind === 'interval'}
-              onClick={() => rhythm.kind !== 'interval' && setRhythm({ kind: 'interval', every: 2, from: draft.startDate ?? today })}
-            >
-              Un jour sur…
-            </button>
+        {prn ? (
+          <div className="field-row">
+            <label className="field">
+              <span>Au plus, par 24 h</span>
+              <select value={prn.maxPerDay} onChange={(e) => set({ asNeeded: { ...prn, maxPerDay: Number(e.target.value) } })}>
+                {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+                  <option key={n} value={n}>
+                    {n} fois
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Écart minimal</span>
+              <select value={prn.minGapH} onChange={(e) => set({ asNeeded: { ...prn, minGapH: Number(e.target.value) } })}>
+                {[0, 1, 2, 4, 6, 8, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n === 0 ? 'aucun' : `${n} h`}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          {rhythm.kind === 'weekdays' && (
-            <div className="chips week-chips" role="group" aria-label="Jours de la semaine">
-              {WEEK.map(({ d, label }) => {
-                const on = rhythm.days.includes(d)
+        ) : (
+          <>
+          <fieldset className="field">
+            <legend>Heures de prise</legend>
+            <div className="chips">
+              {QUICK_TIMES.map((q) => {
+                const on = times.includes(q.time)
                 return (
                   <button
                     type="button"
-                    key={d}
+                    key={q.time}
                     aria-pressed={on}
-                    onClick={() => setRhythm({ kind: 'weekdays', days: on ? rhythm.days.filter((x) => x !== d) : [...rhythm.days, d] })}
+                    onClick={() => set({ times: on ? times.filter((t) => t !== q.time) : [...times, q.time] })}
                   >
-                    {label}
+                    {q.label} {q.time}
                   </button>
                 )
               })}
             </div>
-          )}
-          {rhythm.kind === 'interval' && (
-            <div className="field-row">
-              <label className="field">
-                <span>Un jour sur</span>
-                <select value={rhythm.every} onChange={(e) => setRhythm({ ...rhythm, every: Number(e.target.value) })}>
-                  {[2, 3, 7, 14].map((n) => (
-                    <option key={n} value={n}>
-                      {n === 7 ? '7 (une fois par semaine)' : n === 14 ? '14 (toutes les deux semaines)' : n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>À compter du</span>
-                <input type="date" value={rhythm.from} onChange={(e) => e.target.value && setRhythm({ ...rhythm, from: e.target.value })} />
-              </label>
+            <ul className="times">
+              {times.map((t) => (
+                <li key={t}>
+                  <input
+                    type="time"
+                    value={t}
+                    aria-label="Heure"
+                    onChange={(e) => e.target.value && set({ times: times.map((x) => (x === t ? e.target.value : x)) })}
+                  />
+                  <button type="button" className="ghost" aria-label={`Retirer ${t}`} onClick={() => set({ times: times.filter((x) => x !== t) })}>
+                    <Icon name="close" size={18} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                const free = ['09:00', '14:00', '16:00', '18:00', '20:00'].find((x) => !times.includes(x)) ?? '10:00'
+                set({ times: [...times, free] })
+              }}
+            >
+              <Icon name="plus" size={18} />
+              Autre heure
+            </button>
+          </fieldset>
+
+          <fieldset className="field">
+            <legend>Jours de prise</legend>
+            <div className="chips">
+              <button type="button" aria-pressed={rhythm.kind === 'daily'} onClick={() => setRhythm({ kind: 'daily' })}>
+                Tous les jours
+              </button>
+              <button
+                type="button"
+                aria-pressed={rhythm.kind === 'weekdays'}
+                onClick={() => rhythm.kind !== 'weekdays' && setRhythm({ kind: 'weekdays', days: [new Date(now).getDay()] })}
+              >
+                Certains jours
+              </button>
+              <button
+                type="button"
+                aria-pressed={rhythm.kind === 'interval'}
+                onClick={() => rhythm.kind !== 'interval' && setRhythm({ kind: 'interval', every: 2, from: draft.startDate ?? today })}
+              >
+                Un jour sur…
+              </button>
             </div>
-          )}
-        </fieldset>
+            {rhythm.kind === 'weekdays' && (
+              <div className="chips week-chips" role="group" aria-label="Jours de la semaine">
+                {WEEK.map(({ d, label }) => {
+                  const on = rhythm.days.includes(d)
+                  return (
+                    <button
+                      type="button"
+                      key={d}
+                      aria-pressed={on}
+                      onClick={() => setRhythm({ kind: 'weekdays', days: on ? rhythm.days.filter((x) => x !== d) : [...rhythm.days, d] })}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {rhythm.kind === 'interval' && (
+              <div className="field-row">
+                <label className="field">
+                  <span>Un jour sur</span>
+                  <select value={rhythm.every} onChange={(e) => setRhythm({ ...rhythm, every: Number(e.target.value) })}>
+                    {[2, 3, 7, 14].map((n) => (
+                      <option key={n} value={n}>
+                        {n === 7 ? '7 (une fois par semaine)' : n === 14 ? '14 (toutes les deux semaines)' : n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>À compter du</span>
+                  <input type="date" value={rhythm.from} onChange={(e) => e.target.value && setRhythm({ ...rhythm, from: e.target.value })} />
+                </label>
+              </div>
+            )}
+          </fieldset>
+          </>
+        )}
 
         <fieldset className="field">
           <legend>Durée du traitement</legend>

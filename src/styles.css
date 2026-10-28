@@ -3579,3 +3579,77 @@ button.armed {
 .p-last {
   font-weight: 800;
 }
+
+/* Médicaments « si besoin » */
+.p-prn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.p-prn-title {
+  font-size: 1em;
+  font-weight: 800;
+  color: var(--fg-2);
+}
+
+.p-prn ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.p-prn-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--card);
+  border: 2px solid var(--edge);
+}
+
+.p-prn-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.p-prn-name {
+  font-size: 1.1em;
+  font-weight: 800;
+}
+
+.p-prn-meta {
+  font-size: 0.85em;
+  color: var(--fg-2);
+}
+
+.p-prn-item.wait .p-prn-meta {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.cg-prn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cg-warn {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.cg-prn .cg-rows {
+  border-left: 0;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.cg-prn .cg-dose {
+  grid-template-columns: 36px 1fr 44px;
+}

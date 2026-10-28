@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
 import { parseStored } from './migrate'
 import { seedState } from './seed'
-import type { Alert, AppState, Contact, Medication, Note, Patient, Settings } from './types'
+import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
 /** Copie de ce qui n'a pas pu être relu tel quel, pour ne jamais perdre une ordonnance. */
@@ -10,6 +10,8 @@ const BACKUP_KEY = 'medoc:backup'
 export type Action =
   | { type: 'take'; doseKey: string; by: 'patient' | 'aidant'; at: number }
   | { type: 'untake'; doseKey: string }
+  | { type: 'takeAsNeeded'; intake: AsNeededIntake }
+  | { type: 'untakeAsNeeded'; id: string }
   | { type: 'snooze'; doseKey: string; until: number }
   | { type: 'upsertMed'; med: Medication }
   | { type: 'deleteMed'; id: string }
@@ -50,6 +52,10 @@ export function reducer(state: AppState, action: Action): AppState {
       const { [action.doseKey]: _, ...intakes } = state.intakes
       return { ...state, intakes }
     }
+    case 'takeAsNeeded':
+      return { ...state, asNeededIntakes: [action.intake, ...state.asNeededIntakes].slice(0, 500) }
+    case 'untakeAsNeeded':
+      return { ...state, asNeededIntakes: state.asNeededIntakes.filter((i) => i.id !== action.id) }
     case 'snooze':
       return {
         ...state,
