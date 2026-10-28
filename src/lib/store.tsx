@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { parseStored } from './migrate'
 import { seedState } from './seed'
 import type { Alert, AppState, Contact, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
+/** Copie de ce qui n'a pas pu être relu tel quel, pour ne jamais perdre une ordonnance. */
+const BACKUP_KEY = 'medoc:backup'
 
 export type Action =
   | { type: 'take'; doseKey: string; by: 'patient' | 'aidant'; at: number }
@@ -108,8 +111,9 @@ function load(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as AppState
-      if (parsed.version === 2) return parsed
+      const loaded = parseStored(raw)
+      if (!loaded || loaded.repaired) localStorage.setItem(BACKUP_KEY, raw)
+      if (loaded) return loaded.state
     }
   } catch {
     // Stockage indisponible (navigation privée, aperçu) : on repart des données d'exemple.
@@ -134,11 +138,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY || !e.newValue) return
-      try {
-        dispatch({ type: 'replace', state: JSON.parse(e.newValue) })
-      } catch {
-        // Valeur illisible, on garde l'état courant.
-      }
+      // Valeur illisible : on garde l'état courant.
+      const loaded = parseStored(e.newValue)
+      if (loaded) dispatch({ type: 'replace', state: loaded.state })
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
