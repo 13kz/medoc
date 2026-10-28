@@ -142,6 +142,22 @@ function Shell() {
   )
 }
 
+/** Bandeau discret quand l'appareil ne joint plus le dossier partagé. */
+function SyncNotice() {
+  const { sync } = useStore()
+  if (!sync) return null
+  const text = sync.online
+    ? ''
+    : sync.pending > 0
+      ? `Hors ligne. ${sync.pending === 1 ? 'Une action sera envoyée' : `${sync.pending} actions seront envoyées`} au retour du réseau.`
+      : 'Hors ligne. Les dernières nouvelles des proches arriveront au retour du réseau.'
+  return (
+    <p role="status" className={`sync-notice${text ? '' : ' sr-only'}`}>
+      {text}
+    </p>
+  )
+}
+
 /** L'appli d'un seul rôle, en plein écran, telle qu'on l'installe sur son téléphone ou sa tablette. */
 function Standalone({ role }: { role: Role }) {
   const { state, dispatch } = useStore()
@@ -153,6 +169,7 @@ function Standalone({ role }: { role: Role }) {
   return (
     <div className={`standalone device-${variant}`}>
       <AlertEngine />
+      <SyncNotice />
       <div className="device-glass">
         <div className="device-screen">{role === 'patient' ? <PatientApp /> : role === 'aidant' ? <CaregiverApp /> : <DoctorApp />}</div>
       </div>

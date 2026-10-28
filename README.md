@@ -24,6 +24,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm test             # tests unitaires (Vitest)
 npm run test:a11y    # audit d’accessibilité axe-core (après npm run build)
+npm run server       # serveur de synchronisation sur http://localhost:8787
 npm run build        # build classique dans dist/
 npm run build:single # un seul fichier dist-single/index.html, autonome
 node scripts/artifact.mjs # page de démo publiable comme Artifact claude.ai
@@ -36,8 +37,11 @@ src/
   lib/          types, calcul des prises du jour, phrases lues, pont vers l’appareil, état partagé
   patient/      application du patient
   caregiver/    application de l’aidant (suivi, ordonnance, réglages)
+  doctor/       tablette du médecin
   components/   cadre de téléphone, horloge de démo, pastille de médicament
 ```
+
+`server/` contient le serveur de synchronisation (Node, sans dépendance) et ses tests d’intégration.
 
 ## Installer sur un téléphone
 
@@ -50,6 +54,15 @@ Une fois déployée (`npm run build`, puis servir `dist/` en HTTPS), chaque rôl
 Sur Android, Chrome propose « Ajouter à l’écran d’accueil » ; sur iPhone, Safari > Partager > « Sur l’écran d’accueil ». Chaque adresse a son propre manifeste, donc son nom et son icône. L’heure suit l’heure réelle, et non l’horloge de démo.
 
 Un service worker garde l’application en cache : elle s’ouvre sans réseau. Les notifications système s’affichent quand l’application est en arrière-plan, après accord donné depuis l’écran du patient ou l’onglet Alertes de l’aidant. Pour que les proches soient prévenus téléphone fermé, il faudra le serveur de synchronisation et le Web Push.
+
+## Partager un dossier entre les téléphones
+
+Sans serveur, tout reste dans le navigateur. Avec `npm run server`, le téléphone du patient et ceux des proches partagent le même dossier :
+
+1. lancer le serveur (`npm run server`, données dans `data/` ou `MEDOC_DATA`) ; en développement, Vite le joint derrière `/api` ;
+2. ouvrir chaque appareil une fois avec le même dossier, par exemple `/patient?dossier=famille-dupont` et `/aidant?dossier=famille-dupont` (ajouter `&serveur=https://…` si le serveur est ailleurs) ; l'appareil le retient ensuite, `?dossier=aucun` revient au mode local.
+
+Le premier appareil envoie son dossier comme point de départ. Ensuite chaque geste (prise, ordonnance, réglage) part au serveur, qui le numérote et le diffuse en direct (SSE) ; tous les appareils rejouent les gestes dans cet ordre, ce qui règle les conflits. Hors réseau, l'appli continue : les gestes attendent dans une file et partent au retour, sans doublon. L'horloge de démo reste propre à chaque appareil. Le nom du dossier sert pour l'instant de secret : les comptes et invitations viendront ensuite.
 
 ## Vers l’application mobile (EAS)
 

@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { diffMed } from './changes'
 import { parseStored } from './migrate'
 import { consume, medIdOf } from './stock'
 import { seedState } from './seed'
+import { SyncClient, syncConfig, type SyncStatus } from './sync'
 import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note, Patient, Settings } from './types'
 
 const STORAGE_KEY = 'medoc:v1'
@@ -184,32 +185,74 @@ function load(): AppState {
   return seedState()
 }
 
-const StoreContext = createContext<{ state: AppState; dispatch: (a: Action) => void } | null>(null)
+type Store = { state: AppState; dispatch: (a: Action) => void; sync: SyncStatus | null }
+
+const StoreContext = createContext<Store | null>(null)
+
+/** Client du dossier partagé quand l'appareil en a rejoint un ; sinon tout reste dans ce navigateur. */
+function startSync(onChange: (state: AppState, status: SyncStatus) => void): SyncClient<Action> | null {
+  if (import.meta.env.MODE === 'single' || typeof window === 'undefined') return null
+  const cfg = syncConfig()
+  if (!cfg) return null
+  return new SyncClient<Action>({ ...cfg, reduce: reducer, initial: load, storage: localStorage, onChange: (s, st) => onChange(s, st) })
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, load)
+  const onSync = useRef<(state: AppState, status: SyncStatus) => void>(() => {})
+  const [client] = useState(() => startSync((s, st) => onSync.current(s, st)))
+  const [state, local] = useReducer(reducer, undefined, () => client?.state ?? load())
+  const [sync, setSync] = useState<SyncStatus | null>(client ? client.status : null)
+  onSync.current = (s, st) => {
+    local({ type: 'replace', state: s })
+    setSync(st)
+  }
 
   useEffect(() => {
+    if (!client) return
+    client.start()
+    const back = () => client.retryNow()
+    const lost = () => client.dropConnection()
+    window.addEventListener('online', back)
+    window.addEventListener('offline', lost)
+    return () => {
+      window.removeEventListener('online', back)
+      window.removeEventListener('offline', lost)
+      client.stop()
+    }
+  }, [client])
+
+  const dispatch = useCallback(
+    (a: Action) => {
+      if (!client) return local(a)
+      // Les données d'exemple sont tirées ici une fois : tous les appareils reçoivent le même dossier.
+      client.dispatch(a.type === 'reset' ? { type: 'replace', state: seedState() } : a)
+    },
+    [client],
+  )
+
+  useEffect(() => {
+    if (client) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
       // Ignoré : la démo fonctionne sans persistance.
     }
-  }, [state])
+  }, [state, client])
 
   // Synchronise deux onglets ouverts (un par rôle) comme le ferait un serveur.
   useEffect(() => {
+    if (client) return
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY || !e.newValue) return
       // Valeur illisible : on garde l'état courant.
       const loaded = parseStored(e.newValue)
-      if (loaded) dispatch({ type: 'replace', state: loaded.state })
+      if (loaded) local({ type: 'replace', state: loaded.state })
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  }, [client])
 
-  return <StoreContext.Provider value={{ state, dispatch }}>{children}</StoreContext.Provider>
+  return <StoreContext.Provider value={{ state, dispatch, sync }}>{children}</StoreContext.Provider>
 }
 
 export function useStore() {
