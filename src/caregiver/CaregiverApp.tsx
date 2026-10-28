@@ -19,6 +19,19 @@ import { SettingsTab } from './SettingsTab'
 
 type Tab = 'jour' | 'ordonnance' | 'alertes' | 'reglages'
 
+const TAB_KEY = 'medoc:aidant-tab'
+
+/** L'onglet ouvert survit à un rechargement, par exemple quand on vient de partager le dossier. */
+function readTab(): Tab {
+  try {
+    const t = sessionStorage.getItem(TAB_KEY)
+    if (t === 'ordonnance' || t === 'alertes' || t === 'reglages') return t
+  } catch {
+    // Ignoré.
+  }
+  return 'jour'
+}
+
 const STATUS_LABEL: Record<DoseStatus, string> = {
   pris: 'Pris',
   'a-venir': 'À venir',
@@ -43,7 +56,14 @@ const TABS: [Tab, IconName, string][] = [
 export function CaregiverApp() {
   const { state, dispatch } = useStore()
   const now = useNow()
-  const [tab, setTab] = useState<Tab>('jour')
+  const [tab, setTab] = useState<Tab>(readTab)
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_KEY, tab)
+    } catch {
+      // Ignoré.
+    }
+  }, [tab])
   const [editing, setEditing] = useState<Medication | 'new' | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [history, setHistory] = useState(false)

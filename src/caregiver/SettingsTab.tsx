@@ -3,6 +3,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { formatGlucose } from '../lib/glucose'
 import { canSpeak, speak } from '../lib/platform'
 import { useStore } from '../lib/store'
+import { SharePanel } from './SharePanel'
 import type { ContactRole, DisplayMode } from '../lib/types'
 
 const MODES: { id: DisplayMode; icon: IconName; title: string; desc: string }[] = [
@@ -306,6 +307,8 @@ export function SettingsTab() {
           </button>
         </form>
       </div>
+
+      <SharePanel />
     </section>
   )
 }

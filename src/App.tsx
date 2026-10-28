@@ -6,7 +6,10 @@ import { Icon } from './components/Icon'
 import { useNow } from './lib/clock'
 import { planAlerts, deliveredAlerts } from './lib/alerts'
 import { roleFromLocation, applyRoleManifest, type Role } from './lib/pwa'
+import { currentLink, removeLink, saveLink, type Link } from './lib/links'
+import { LinkContext, useLink } from './lib/linkContext'
 import { StoreProvider, useStore } from './lib/store'
+import { JoinScreen } from './components/JoinScreen'
 import { DoctorApp } from './doctor/DoctorApp'
 import { PatientApp } from './patient/PatientApp'
 
@@ -145,7 +148,24 @@ function Shell() {
 /** Bandeau discret quand l'appareil ne joint plus le dossier partagé. */
 function SyncNotice() {
   const { sync } = useStore()
+  const { link, open } = useLink()
   if (!sync) return null
+  if (sync.access !== 'ok') {
+    return (
+      <div role="alert" className="sync-notice">
+        <p>Cet appareil n’a plus accès à ce dossier partagé.</p>
+        <button
+          className="sync-leave"
+          onClick={() => {
+            if (link) removeLink(link)
+            open(null)
+          }}
+        >
+          Utiliser cet appareil seul
+        </button>
+      </div>
+    )
+  }
   const text = sync.online
     ? ''
     : sync.pending > 0
@@ -177,13 +197,58 @@ function Standalone({ role }: { role: Role }) {
   )
 }
 
+const invitationCode = () => new URLSearchParams(location.search).get('invitation')
+const wantsJoin = () => import.meta.env.MODE !== 'single' && (invitationCode() !== null || /\/rejoindre\/?$/.test(location.pathname))
+
 export default function App() {
   const [role, setRole] = useState(roleFromLocation)
+  const [joining, setJoining] = useState(wantsJoin)
+  const [link, setLink] = useState<Link | null>(() => (role ? currentLink(role) : null))
   useEffect(() => {
     const onHash = () => setRole(roleFromLocation())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
+  useEffect(() => setLink(role ? currentLink(role) : null), [role])
   applyRoleManifest(role)
-  return <StoreProvider>{role ? <Standalone role={role} /> : <Shell />}</StoreProvider>
+
+  const open = (next: Link | null) => {
+    if (next) saveLink(next)
+    setLink(next)
+  }
+
+  if (joining) {
+    const leave = (to: string) => {
+      history.replaceState(null, '', to)
+      const next = roleFromLocation()
+      setJoining(false)
+      setRole(next)
+      setLink(next ? currentLink(next) : null)
+    }
+    return (
+      <JoinScreen
+        code={invitationCode() ?? ''}
+        onJoined={(l) => {
+          saveLink(l)
+          leave(`/${l.role}`)
+        }}
+        onCancel={() => leave(role ? `/${role}` : '/')}
+      />
+    )
+  }
+
+  return (
+    <LinkContext.Provider value={{ role, link, open }}>
+      <StoreProvider
+        key={link?.dossier ?? 'local'}
+        link={link}
+        onLeave={() => {
+          if (link) removeLink(link)
+          setLink(null)
+        }}
+      >
+        {role ? <Standalone role={role} /> : <Shell />}
+      </StoreProvider>
+    </LinkContext.Provider>
+  )
 }
