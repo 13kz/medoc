@@ -1,8 +1,8 @@
 import { isPhoto } from './photo'
 import { seedState } from './seed'
-import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note } from './types'
+import type { Alert, AppState, AsNeededIntake, Contact, GlucoseReading, Medication, Note } from './types'
 
-export const CURRENT_VERSION = 4
+export const CURRENT_VERSION = 5
 
 type Raw = Record<string, unknown>
 
@@ -23,6 +23,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   }),
   // v3 : pas encore de médicaments « si besoin ».
   3: (s) => ({ ...s, asNeededIntakes: [] }),
+  // v4 : pas encore de glycémies.
+  4: (s) => ({ ...s, glucose: [] }),
 }
 
 export interface Loaded {
@@ -112,10 +114,24 @@ function fixStock(a: unknown): Medication['stock'] {
   return { units: a.units, perDose: a.perDose, boxSize: a.boxSize }
 }
 
+function fixGlucoseRule(g: unknown): Medication['glucose'] {
+  if (!isObj(g)) return undefined
+  const scale = Array.isArray(g.scale)
+    ? g.scale.filter((st): st is { max: number | null; units: number } => isObj(st) && isNum(st.units) && (st.max === null || isNum(st.max)))
+    : []
+  return { scale: scale.map((st) => ({ max: st.max, units: st.units })) }
+}
+
+const fixReading = (x: unknown): GlucoseReading | null =>
+  isObj(x) && isStr(x.id) && fixIso(x.at) && isNum(x.value)
+    ? { id: x.id, at: x.at as string, value: x.value, by: x.by === 'aidant' ? 'aidant' : 'patient', ...(isStr(x.doseKey) ? { doseKey: x.doseKey } : {}) }
+    : null
+
 function fixMed(x: unknown): Medication | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.name)) return null
   const times = Array.isArray(x.times) ? x.times.filter((t): t is string => isStr(t) && HHMM.test(t)) : []
-  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, stock: _k, photo: _p, ...rest } = x
+  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, stock: _k, photo: _p, glucose: _g, ...rest } = x
+  const glucose = fixGlucoseRule(x.glucose)
   const stock = fixStock(x.stock)
   const rhythm = fixRhythm(x.rhythm)
   const asNeeded = fixAsNeeded(x.asNeeded)
@@ -124,6 +140,7 @@ function fixMed(x: unknown): Medication | null {
     ...(asNeeded ? { asNeeded } : {}),
     ...(stock ? { stock } : {}),
     ...(isPhoto(x.photo) ? { photo: x.photo } : {}),
+    ...(glucose ? { glucose } : {}),
     ...(rhythm ? { rhythm } : {}),
     ...(isDay(x.startDate) ? { startDate: x.startDate } : {}),
     ...(isDay(x.endDate) ? { endDate: x.endDate } : {}),
@@ -198,6 +215,7 @@ export function migrate(input: unknown, real = Date.now()): Loaded | null {
     settings: mergeTyped(defaults.settings, raw.settings, flag),
     intakes: keepRecord(raw.intakes, fixIntake, flag),
     asNeededIntakes: keep(raw.asNeededIntakes, fixAsNeededIntake, flag),
+    glucose: keep(raw.glucose, fixReading, flag),
     snoozes: keepRecord(raw.snoozes, fixIso, flag),
     alerts: keep(raw.alerts, fixAlert, flag),
     notes: keep(raw.notes, fixNote, flag),

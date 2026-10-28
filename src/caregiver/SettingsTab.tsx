@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Icon, type IconName } from '../components/Icon'
+import { formatGlucose } from '../lib/glucose'
 import { canSpeak, speak } from '../lib/platform'
 import { useStore } from '../lib/store'
 import type { ContactRole, DisplayMode } from '../lib/types'
@@ -186,6 +187,35 @@ export function SettingsTab() {
           </select>
         </label>
       </div>
+
+      {state.medications.some((m) => m.glucose) && (
+        <div className="group">
+          <h3>Glycémie</h3>
+          <div className="field-row">
+            <label className="field" htmlFor="hypo">
+              <span>Basse en dessous de</span>
+              <select id="hypo" value={settings.hypoBelow} onChange={(e) => dispatch({ type: 'settings', patch: { hypoBelow: Number(e.target.value) } })}>
+                {[0.6, 0.7, 0.8].map((v) => (
+                  <option key={v} value={v}>
+                    {formatGlucose(v)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field" htmlFor="hyper">
+              <span>Haute au-dessus de</span>
+              <select id="hyper" value={settings.hyperAbove} onChange={(e) => dispatch({ type: 'settings', patch: { hyperAbove: Number(e.target.value) } })}>
+                {[2, 2.5, 3].map((v) => (
+                  <option key={v} value={v}>
+                    {formatGlucose(v)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="cg-help">Hors de ces seuils, les proches qui ont activé les alertes sont prévenus aussitôt, même la nuit.</p>
+        </div>
+      )}
 
       <div className="group">
         <h3>Personnes à prévenir</h3>

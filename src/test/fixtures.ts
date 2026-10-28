@@ -15,6 +15,8 @@ export function makeState(patch: Partial<AppState> = {}): AppState {
     ...base,
     medications: [],
     intakes: {},
+    asNeededIntakes: [],
+    glucose: [],
     snoozes: {},
     alerts: [],
     notes: [],

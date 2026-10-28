@@ -1,5 +1,5 @@
 import { dayKey, doseKey } from './schedule'
-import type { AppState, Intake } from './types'
+import type { AppState, GlucoseReading, Intake } from './types'
 
 /** Décalage pour que la démo commence à 7 h 55 aujourd'hui, juste avant la première prise. */
 export function offsetTo(hhmm: string, real = Date.now()): number {
@@ -13,7 +13,7 @@ export function offsetTo(hhmm: string, real = Date.now()): number {
 export function seedState(): AppState {
   const real = Date.now()
   const state: AppState = {
-    version: 4,
+    version: 5,
     patient: {
       name: 'Maman',
       fullName: 'Mireille Benali',
@@ -85,6 +85,13 @@ export function seedState(): AppState {
         instructions: 'Contrôler la glycémie avant',
         color: '#8e5bd6',
         active: true,
+        glucose: {
+          scale: [
+            { max: 1.2, units: 12 },
+            { max: 2, units: 14 },
+            { max: null, units: 16 },
+          ],
+        },
       },
       {
         id: 'doliprane',
@@ -103,15 +110,17 @@ export function seedState(): AppState {
       { id: 'medecin', name: 'Dr Martin', role: 'medecin', notify: false },
       { id: 'voisine', name: 'Sylvie (voisine)', role: 'tiers', notify: true },
     ],
-    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, refillDays: 7, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
+    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, refillDays: 7, hypoBelow: 0.7, hyperAbove: 2.5, quietHours: true, quietFrom: '22:30', quietTo: '07:00' },
     intakes: {},
     asNeededIntakes: [],
+    glucose: [],
     snoozes: {},
     alerts: [],
     notes: [],
     clock: { offsetMs: offsetTo('07:55', real), speed: 1, anchorMs: real },
   }
   state.intakes = pastWeek(state, real + state.clock.offsetMs)
+  state.glucose = pastGlucose(state, real + state.clock.offsetMs)
   return state
 }
 
@@ -136,4 +145,20 @@ function pastWeek(state: AppState, now: number): Record<string, Intake> {
     }
   }
   return intakes
+}
+
+/** Glycémies du soir des six derniers jours, avant l'insuline (sauf le soir où elle a été oubliée), dont une hypoglycémie. */
+function pastGlucose(state: AppState, now: number): GlucoseReading[] {
+  const values = [1.32, 1.85, 0.94, 0.64, 2.21, 1.48]
+  const out: GlucoseReading[] = []
+  values.forEach((value, i) => {
+    const ago = i + 1
+    const day = new Date(now)
+    day.setDate(day.getDate() - ago)
+    day.setHours(21, 52, 0, 0)
+    const key = doseKey(dayKey(day.getTime()), 'lantus', '22:00')
+    if (!state.intakes[key]) return
+    out.push({ id: `g-${ago}`, at: day.toISOString(), value, doseKey: key, by: 'patient' })
+  })
+  return out
 }

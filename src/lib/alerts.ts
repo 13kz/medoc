@@ -1,3 +1,4 @@
+import { glucoseAlertMessage } from './glucose'
 import { dayKey, dosesOn, formatTime, spokenTime } from './schedule'
 import type { Alert, AlertLevel, AppState, Settings } from './types'
 
@@ -63,6 +64,14 @@ export function planAlerts(state: AppState, now: number): AlertPlan {
     // Une prise reportée (« plus tard ») n'est pas en retard : l'escalade attend la fin du report.
     if (now < escalateAt) continue
     add('proches', d.key, `${patient.name} n’a pas encore pris ${d.med.name} (prévu ${planned}).`, notify, quietUntil(settings, now) ?? now)
+  }
+
+  // Glycémie hors des seuils : les proches sont prévenus aussitôt, même la nuit.
+  for (const g of state.glucose) {
+    const t = Date.parse(g.at)
+    if (t > now || now - t > DAY / 2 || notify.length === 0) continue
+    const message = glucoseAlertMessage(state, g)
+    if (message) add('proches', `glycemie|${g.id}`, message, notify)
   }
 
   const resolve = state.alerts

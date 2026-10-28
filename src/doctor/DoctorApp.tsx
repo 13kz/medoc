@@ -3,7 +3,9 @@ import { MedEditor } from '../caregiver/MedEditor'
 import { asNeededLabel } from '../lib/asNeeded'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
+import { GlucoseChart } from '../components/GlucoseChart'
 import { WeekBox } from '../components/WeekBox'
+import { formatGlucose, glucoseLevel, glucoseWeek } from '../lib/glucose'
 import { useNow } from '../lib/clock'
 import { adherence, dosesForDay, formatTime, missedByMed, rhythmLabel, spokenTime, weekGrid, type WeekDay } from '../lib/schedule'
 import { useStore } from '../lib/store'
@@ -187,6 +189,30 @@ export function DoctorApp() {
               </p>
             )}
           </section>
+
+          {isLive && (state.glucose.length > 0 || state.medications.some((m) => m.glucose)) && (
+            <section className="dr-panel dr-glu">
+              <h3>Glycémie, 7 derniers jours</h3>
+              {glucoseWeek(state, now).length === 0 ? (
+                <p className="dr-calm">Aucune mesure cette semaine.</p>
+              ) : (
+                <>
+                  <GlucoseChart readings={glucoseWeek(state, now)} settings={state.settings} now={now} />
+                  <ul className="dr-glu-out">
+                    {glucoseWeek(state, now)
+                      .filter((g) => glucoseLevel(state.settings, g.value) !== 'normal')
+                      .map((g) => (
+                        <li key={g.id}>
+                          <Icon name="alert" size={16} stroke={2.2} />
+                          {glucoseLevel(state.settings, g.value) === 'hypo' ? 'Basse' : 'Haute'} : {formatGlucose(g.value)},{' '}
+                          {new Intl.DateTimeFormat('fr-FR', { weekday: 'long' }).format(Date.parse(g.at))} à {formatTime(Date.parse(g.at))}
+                        </li>
+                      ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          )}
 
           {isLive && (
             <section className="dr-panel">

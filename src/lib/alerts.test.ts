@@ -12,7 +12,7 @@ const base = (patch: Partial<AppState> = {}) =>
       { id: 'dr', name: 'Dr Martin', role: 'medecin', notify: false },
     ],
     ...patch,
-    settings: { lateAfterMin: 30, escalateAfterMin: 30, snoozeMin: 10, refillDays: 7, quietHours: true, quietFrom: '22:30', quietTo: '07:00', ...patch.settings },
+    settings: { ...makeState().settings, lateAfterMin: 30, escalateAfterMin: 30, quietHours: true, quietFrom: '22:30', quietTo: '07:00', ...patch.settings },
   })
 
 /** Fait tourner le moteur comme l'appli : on applique le plan à chaque instant. */

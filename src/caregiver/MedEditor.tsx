@@ -314,6 +314,20 @@ export function MedEditor({
 
         <label className="switch">
           <span>
+            Glycémie avant la prise
+            <small>Le patient la note avant de prendre ; la dose peut en dépendre.</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={!!draft.glucose}
+            onChange={(e) => set({ glucose: e.target.checked ? { scale: [] } : undefined })}
+          />
+        </label>
+        {draft.glucose && <ScaleEditor scale={draft.glucose.scale} onChange={(scale) => set({ glucose: { scale } })} />}
+
+        <label className="switch">
+          <span>
             Suivre le stock
             <small>Décompté à chaque prise, pour savoir quand racheter.</small>
           </span>
@@ -441,5 +455,96 @@ export function MedEditor({
         )}
       </form>
     </div>
+  )
+}
+
+type Scale = NonNullable<Medication['glucose']>['scale']
+
+/** Schéma de dose par paliers de glycémie : « moins de 1,2 g/L : 12 unités », …, « au-delà : 16 unités ». */
+function ScaleEditor({ scale, onChange }: { scale: Scale; onChange: (s: Scale) => void }) {
+  const steps = scale.filter((s) => s.max !== null).sort((a, b) => a.max! - b.max!)
+  const above = scale.find((s) => s.max === null)
+  const save = (next: Scale, top = above) => onChange(top ? [...next, top] : next)
+  const num = (v: string) => Number(v.replace(',', '.'))
+
+  if (scale.length === 0)
+    return (
+      <div className="scale">
+        <p className="muted">Dose fixe : celle de l’ordonnance, quelle que soit la glycémie.</p>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() =>
+            onChange([
+              { max: 1.2, units: 12 },
+              { max: 2, units: 14 },
+              { max: null, units: 16 },
+            ])
+          }
+        >
+          <Icon name="plus" size={18} />
+          Dose selon la glycémie
+        </button>
+      </div>
+    )
+
+  return (
+    <fieldset className="field scale">
+      <legend>Unités selon la glycémie</legend>
+      <ul>
+        {steps.map((st, i) => (
+          <li key={i}>
+            <span>{i === 0 ? 'Moins de' : 'Puis moins de'}</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step={0.1}
+              min={0.2}
+              aria-label="Seuil en g/L"
+              value={st.max!}
+              onChange={(e) => save(steps.map((x, j) => (j === i ? { ...x, max: num(e.target.value) } : x)))}
+            />
+            <span>g/L :</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              aria-label="Unités"
+              value={st.units}
+              onChange={(e) => save(steps.map((x, j) => (j === i ? { ...x, units: num(e.target.value) } : x)))}
+            />
+            <span>unités</span>
+            <button type="button" className="icon-btn" aria-label="Retirer ce palier" onClick={() => save(steps.filter((_, j) => j !== i))}>
+              <Icon name="close" size={16} />
+            </button>
+          </li>
+        ))}
+        <li>
+          <span>Au-delà :</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            aria-label="Unités au-delà"
+            value={above?.units ?? ''}
+            onChange={(e) => save(steps, { max: null, units: num(e.target.value) })}
+          />
+          <span>unités</span>
+        </li>
+      </ul>
+      <div className="p-row">
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => save([...steps, { max: (steps.at(-1)?.max ?? 1) + 0.5, units: (steps.at(-1)?.units ?? 10) + 2 }])}
+        >
+          <Icon name="plus" size={18} />
+          Ajouter un palier
+        </button>
+        <button type="button" className="ghost" onClick={() => onChange([])}>
+          Dose fixe
+        </button>
+      </div>
+    </fieldset>
   )
 }
