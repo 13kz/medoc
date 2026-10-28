@@ -75,11 +75,23 @@ Le serveur fait tourner le même moteur d’alertes que l’appli, toutes les 30
 - Clés VAPID créées au premier lancement dans `MEDOC_DATA/_vapid.json` ; chiffrement aes128gcm (RFC 8291) fait par le serveur, sans dépendance.
 - Les heures de prise sont des heures locales : lancer le serveur dans le fuseau du patient, par exemple `TZ=Europe/Paris npm run server`.
 
-## Vers l’application mobile (EAS)
+## Application mobile (Expo, EAS)
 
-L’idée est d’emballer cette page dans une WebView React Native construite avec EAS, pour Android et iPhone. `src/lib/platform.ts` prépare ce passage : si `window.ReactNativeWebView` existe, la voix, les notifications et la vibration sont envoyées au natif par `postMessage` (à brancher sur `expo-speech`, `expo-notifications` et `expo-haptics`) ; sinon les API web prennent le relais.
+`mobile/` est une coque Expo : l’appli web du patient dans une WebView, et, autour, ce que seul le natif garantit.
 
-Ce qu’il restera à faire côté mobile :
+- **Rappels même appli fermée** : la page calcule les rappels des trois prochains jours (`src/lib/reminders.ts`), un à l’heure de chaque moment de prise et un second après le délai de retard, puis les envoie à la coque (message `schedule` de `src/lib/platform.ts`) à chaque changement d’ordonnance ou de prise. La coque les programme avec `expo-notifications` (60 au plus, limite d’iOS) ; ils sonnent téléphone verrouillé.
+- **Boutons dans la notification** : « J’ai pris » ouvre l’appli et coche les prises du rappel ; « Plus tard » reprogramme un rappel après le délai de report, sans ouvrir l’appli, et la page l’enregistre à sa prochaine ouverture (`src/lib/bridge.ts`).
+- Voix (`expo-speech`), vibration (`expo-haptics`) et notifications immédiates passent par le même pont.
 
-- notifications locales programmées à l’avance, pour sonner même téléphone verrouillé ou appli fermée ;
-- à étudier : photo de la boîte, scan de l’ordonnance, suivi de la glycémie et des doses d’insuline variables.
+```bash
+cd mobile
+npm install
+npm start                 # Expo Go ou client de développement
+npm run typecheck
+eas build --profile preview --platform android   # APK à installer directement
+eas build --profile production --platform all    # Play Store et App Store
+```
+
+L’adresse de l’appli web chargée vient de `EXPO_PUBLIC_MEDOC_URL`, réglée par profil dans `mobile/eas.json` (développement : la machine locale, `npm run dev -- --host`).
+
+Reste à faire : le scan de l’ordonnance.
