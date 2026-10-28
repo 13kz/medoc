@@ -171,8 +171,23 @@ export interface Note {
   acknowledged: boolean
 }
 
+/** Changement de l'ordonnance, gardé pour les proches, le médecin et le patient. */
+export interface TreatmentChange {
+  id: string
+  at: string
+  /** Qui a fait le changement (nom affiché). */
+  by: string
+  medId: string
+  medName: string
+  kind: 'ajout' | 'modif' | 'arret' | 'reprise' | 'suppression'
+  /** « Dose : 14 unités → 16 unités » */
+  details: string[]
+  /** Le patient l'a entendu et a confirmé. */
+  acknowledged: boolean
+}
+
 export interface AppState {
-  version: 5
+  version: 6
   patient: Patient
   medications: Medication[]
   contacts: Contact[]
@@ -187,6 +202,8 @@ export interface AppState {
   snoozes: Record<string, string>
   alerts: Alert[]
   notes: Note[]
+  /** Journal des changements de traitement, les plus récents d'abord. */
+  changes: TreatmentChange[]
   clock: Clock
 }
 

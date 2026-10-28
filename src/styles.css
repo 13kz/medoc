@@ -4063,3 +4063,32 @@ button.armed {
     color: #000 !important;
   }
 }
+
+/* Journal des changements de traitement */
+.changelog h3 {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+.changelog ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.changelog li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  padding-left: 10px;
+  border-left: 3px solid var(--line);
+}
+
+.changelog .cl-meta {
+  color: var(--ink-2);
+  font-size: 12px;
+}

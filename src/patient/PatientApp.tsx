@@ -16,6 +16,7 @@ import { useStore } from '../lib/store'
 import { asNeededAdvice, asNeededMeds, asNeededStatus } from '../lib/asNeeded'
 import type { Dose, DoseStatus, Medication } from '../lib/types'
 import { AsNeededPanel } from './AsNeededPanel'
+import { changeSentence } from '../lib/changes'
 import { GlucoseEntry } from './GlucoseEntry'
 import { doseText, formatGlucose, glucoseAdvice, needsGlucose, readingFor } from '../lib/glucose'
 import { Icon } from '../components/Icon'
@@ -155,6 +156,16 @@ export function PatientApp() {
   }, [note?.id, unlocked])
   const done = doses.filter((d) => d.status === 'pris').length
 
+  // Un changement de traitement est annoncé et lu, jusqu'à ce que le patient confirme l'avoir compris.
+  const change = state.changes.find((c) => !c.acknowledged)
+  const lastChange = useRef(change?.id)
+  useEffect(() => {
+    if (!unlocked || !change || change.id === lastChange.current) return
+    lastChange.current = change.id
+    chime()
+    setTimeout(() => say(`Changement de traitement. ${changeSentence(patient, change)}`), 900)
+  }, [change?.id, unlocked])
+
   const moments = MOMENTS.map((m) => {
     const items = doses.filter((d) => momentOf(d.time) === m.id)
     const has = (st: DoseStatus) => items.some((d) => d.status === st)
@@ -230,6 +241,32 @@ export function PatientApp() {
               className="p-btn p-sec"
               onClick={() => {
                 dispatch({ type: 'ackNote', id: note.id })
+                say('D’accord.')
+              }}
+            >
+              <Icon name="check" size="1.2em" stroke={2.8} />
+              J’ai compris
+            </button>
+          </div>
+        </section>
+      )}
+
+      {change && (
+        <section className="p-note p-change" aria-label="Changement de traitement">
+          <p className="p-note-from">
+            <Icon name="info" size="1.2em" />
+            Changement de traitement
+          </p>
+          <p className="p-note-text">{changeSentence(patient, change)}</p>
+          <div className="p-row">
+            <button className="p-btn p-sec" onClick={() => say(changeSentence(patient, change))}>
+              <Icon name="speaker" size="1.2em" />
+              Écouter
+            </button>
+            <button
+              className="p-btn p-sec"
+              onClick={() => {
+                dispatch({ type: 'ackChange', id: change.id })
                 say('D’accord.')
               }}
             >

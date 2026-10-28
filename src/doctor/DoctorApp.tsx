@@ -4,6 +4,7 @@ import { asNeededLabel } from '../lib/asNeeded'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { GlucoseChart } from '../components/GlucoseChart'
+import { ChangeLog } from '../components/ChangeLog'
 import { HistoryView } from '../components/HistoryView'
 import { WeekBox } from '../components/WeekBox'
 import { formatGlucose, glucoseLevel, glucoseWeek } from '../lib/glucose'
@@ -251,6 +252,7 @@ export function DoctorApp() {
                   </li>
                 ))}
               </ul>
+              <ChangeLog changes={state.changes} />
             </section>
           )}
 
@@ -304,11 +306,11 @@ export function DoctorApp() {
           now={now}
           onClose={() => setEditing(null)}
           onSave={(med) => {
-            dispatch({ type: 'upsertMed', med })
+            dispatch({ type: 'upsertMed', med, by: doctorName, at: now })
             setEditing(null)
           }}
           onDelete={(id) => {
-            dispatch({ type: 'deleteMed', id })
+            dispatch({ type: 'deleteMed', id, by: doctorName, at: now })
             setEditing(null)
           }}
         />
