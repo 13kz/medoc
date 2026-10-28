@@ -1,7 +1,17 @@
 import type { Medication } from '../lib/types'
 
-/** Dessin du médicament dans sa forme réelle et sa couleur, pour le reconnaître d'un coup d'œil. */
-export function Pill({ med, size = 'md' }: { med: Medication; size?: 'xs' | 'sm' | 'md' | 'xl' }) {
+/**
+ * Dessin du médicament dans sa forme réelle et sa couleur, pour le reconnaître d'un coup d'œil.
+ * Avec `photo`, la photo de la boîte remplace le dessin quand l'aidant en a pris une.
+ */
+export function Pill({ med, size = 'md', photo = false }: { med: Medication; size?: 'xs' | 'sm' | 'md' | 'xl'; photo?: boolean }) {
+  if (photo && med.photo) {
+    return (
+      <span className={`pill pill-${size} pill-photo`}>
+        <img src={med.photo} alt={`Boîte de ${med.name}`} />
+      </span>
+    )
+  }
   const c = med.color
   const ink = 'var(--pill-ink, #1b2420)'
   let shape

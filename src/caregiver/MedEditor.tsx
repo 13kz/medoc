@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
+import { compressPhoto } from '../lib/photo'
 import { FORMS, addDays, dayKey } from '../lib/schedule'
 import type { MedForm, Medication, Rhythm } from '../lib/types'
 
@@ -63,6 +64,8 @@ export function MedEditor({
     },
   )
   const set = (patch: Partial<Medication>) => setDraft((d) => ({ ...d, ...patch }))
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [photoError, setPhotoError] = useState(false)
   const times = [...new Set(draft.times)].sort()
   const today = dayKey(now)
   const rhythm: Rhythm = draft.rhythm ?? { kind: 'daily' }
@@ -365,6 +368,49 @@ export function MedEditor({
             onChange={(e) => set({ instructions: e.target.value })}
           />
         </label>
+
+        <fieldset className="field">
+          <legend>Photo de la boîte</legend>
+          <div className="photo-field">
+            {draft.photo ? (
+              <img className="photo-preview" src={draft.photo} alt={`Boîte de ${draft.name || 'ce médicament'}`} />
+            ) : (
+              <span className="photo-empty">
+                <Icon name="box" size={28} />
+              </span>
+            )}
+            <div className="photo-actions">
+              <p className="muted">Affichée en grand à l’heure de la prise : on reconnaît la boîte avant de lire le nom.</p>
+              <button type="button" className="secondary" onClick={() => fileInput.current?.click()}>
+                {draft.photo ? 'Changer la photo' : 'Prendre une photo'}
+              </button>
+              {draft.photo && (
+                <button type="button" className="ghost" onClick={() => set({ photo: undefined })}>
+                  Retirer
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                try {
+                  set({ photo: await compressPhoto(file) })
+                  setPhotoError(false)
+                } catch {
+                  setPhotoError(true)
+                }
+              }}
+            />
+          </div>
+          {photoError && <p className="field-error">Impossible de lire cette image.</p>}
+        </fieldset>
 
         <fieldset className="field">
           <legend>Couleur de repère</legend>

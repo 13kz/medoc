@@ -1,3 +1,4 @@
+import { isPhoto } from './photo'
 import { seedState } from './seed'
 import type { Alert, AppState, AsNeededIntake, Contact, Medication, Note } from './types'
 
@@ -114,7 +115,7 @@ function fixStock(a: unknown): Medication['stock'] {
 function fixMed(x: unknown): Medication | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.name)) return null
   const times = Array.isArray(x.times) ? x.times.filter((t): t is string => isStr(t) && HHMM.test(t)) : []
-  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, stock: _k, ...rest } = x
+  const { rhythm: _r, startDate: _s, endDate: _e, asNeeded: _a, stock: _k, photo: _p, ...rest } = x
   const stock = fixStock(x.stock)
   const rhythm = fixRhythm(x.rhythm)
   const asNeeded = fixAsNeeded(x.asNeeded)
@@ -122,6 +123,7 @@ function fixMed(x: unknown): Medication | null {
     ...(rest as unknown as Medication),
     ...(asNeeded ? { asNeeded } : {}),
     ...(stock ? { stock } : {}),
+    ...(isPhoto(x.photo) ? { photo: x.photo } : {}),
     ...(rhythm ? { rhythm } : {}),
     ...(isDay(x.startDate) ? { startDate: x.startDate } : {}),
     ...(isDay(x.endDate) ? { endDate: x.endDate } : {}),

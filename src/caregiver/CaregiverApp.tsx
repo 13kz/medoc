@@ -297,7 +297,7 @@ export function CaregiverApp() {
               {state.medications.map((m) => (
                 <li key={m.id} className={`cg-med ${m.active ? '' : 'inactive'}`}>
                   <button className="cg-med-btn" onClick={() => setEditing(m)}>
-                    <Pill med={m} size="md" />
+                    <Pill med={m} size="md" photo />
                     <span className="cg-dose-text">
                       <strong>{m.name}</strong>
                       <span className="cg-meta">
