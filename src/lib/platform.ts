@@ -5,6 +5,8 @@
  * Dans un navigateur, on utilise les API web équivalentes.
  */
 
+import { webNotify } from './pwa'
+
 type NativeMessage =
   | { type: 'speak'; text: string; rate: number }
   | { type: 'stopSpeaking' }
@@ -58,9 +60,10 @@ export function vibrate(): void {
   navigator.vibrate?.([200, 100, 200])
 }
 
-/** Notification système (natif seulement ; dans la démo, les bandeaux in-app suffisent). */
-export function systemNotify(title: string, body: string): void {
-  post({ type: 'notify', title, body })
+/** Notification système : le natif dans la coque mobile, sinon une notification web si l'appli n'est pas à l'écran. */
+export function systemNotify(title: string, body: string, tag?: string): void {
+  if (post({ type: 'notify', title, body })) return
+  void webNotify(title, body, { tag })
 }
 
 let audio: AudioContext | undefined

@@ -1,0 +1,35 @@
+{
+  "lang": "fr",
+  "dir": "ltr",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "health",
+    "medical"
+  ],
+  "id": "/medecin",
+  "name": "Medoc médecin",
+  "short_name": "Medoc médecin",
+  "description": "Le suivi de l’observance de vos patients.",
+  "start_url": "/medecin",
+  "scope": "/",
+  "background_color": "#eef1ec",
+  "theme_color": "#0b6e4f"
+}
