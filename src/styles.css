@@ -3556,3 +3556,26 @@ button.armed {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+
+.field-error {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.week-chips {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.week-chips button {
+  min-width: 0;
+  padding-inline: 0;
+  justify-content: center;
+}
+
+.p-last {
+  font-weight: 800;
+}

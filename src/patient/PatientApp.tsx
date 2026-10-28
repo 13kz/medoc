@@ -11,7 +11,7 @@ import {
   stopSpeaking,
   vibrate,
 } from '../lib/platform'
-import { MOMENTS, dosesForDay, momentInfo, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
+import { MOMENTS, dayKey, dosesForDay, isLastDay, momentInfo, formatDuration, formatTime, momentOf, nextUpcoming, pendingNow, spokenTime } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { Dose, DoseStatus } from '../lib/types'
 import { Icon } from '../components/Icon'
@@ -241,6 +241,7 @@ export function PatientApp() {
                   {current.med.instructions}
                 </p>
               )}
+              {isLastDay(current.med, dayKey(current.at)) && <p className="p-instr p-last">Dernier jour du traitement</p>}
             </div>
           </div>
           <div className="p-actions">

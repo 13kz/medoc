@@ -1,4 +1,4 @@
-import { formatTime, spokenTime } from './schedule'
+import { dayKey, formatTime, isLastDay, spokenTime } from './schedule'
 import type { Dose, Patient } from './types'
 
 const ORDINALS = ['Premier', 'Deuxième', 'Troisième', 'Quatrième', 'Cinquième', 'Sixième']
@@ -7,7 +7,8 @@ const ORDINALS = ['Premier', 'Deuxième', 'Troisième', 'Quatrième', 'Cinquièm
 export const tv = (p: Patient, tu: string, vous: string) => (p.tutoiement ? tu : vous)
 
 export function describeDose(d: Dose): string {
-  return [d.med.name, d.med.dose, d.med.instructions].filter(Boolean).join('. ') + '.'
+  const last = isLastDay(d.med, dayKey(d.at)) ? 'C’est le dernier jour' : undefined
+  return [d.med.name, d.med.dose, d.med.instructions, last].filter(Boolean).join('. ') + '.'
 }
 
 export function announce(p: Patient, doses: Dose[], now: number): string {

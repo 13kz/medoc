@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon'
 import { Pill } from '../components/Pill'
 import { WeekBox } from '../components/WeekBox'
 import { useNow } from '../lib/clock'
-import { adherence, dosesForDay, formatTime, missedByMed, spokenTime, weekGrid, type WeekDay } from '../lib/schedule'
+import { adherence, dosesForDay, formatTime, missedByMed, rhythmLabel, spokenTime, weekGrid, type WeekDay } from '../lib/schedule'
 import { useStore } from '../lib/store'
 import type { Medication } from '../lib/types'
 import { SAMPLE_PATIENTS, sampleWeek } from './roster'
@@ -203,7 +203,7 @@ export function DoctorApp() {
                     <span className="dr-med-text">
                       <strong>{m.name}</strong>
                       <span>
-                        {m.dose}, {m.active ? [...m.times].sort().map(spokenTime).join(' et ') : 'suspendu'}
+                        {m.dose}, {m.active ? `${[...m.times].sort().map(spokenTime).join(' et ')}, ${rhythmLabel(m).toLowerCase()}` : 'suspendu'}
                       </span>
                     </span>
                     <button className="dr-link" onClick={() => setEditing(m)}>
