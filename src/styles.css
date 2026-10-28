@@ -3894,3 +3894,172 @@ button.armed {
 .dr-glu-out .icon {
   color: var(--red);
 }
+
+/* Historique sur 30 jours */
+.hist-total {
+  font-size: 15px;
+}
+
+.hist-total strong {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.hist-meds,
+.hist-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hist-meds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hist-meds li {
+  display: grid;
+  grid-template-columns: 1fr 80px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.hm-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line-2);
+  overflow: hidden;
+}
+
+.hm-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--green);
+}
+
+.hm-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  grid-column: -2;
+}
+
+.hist-days details {
+  border-top: 1px solid var(--line-2);
+}
+
+.hist-days summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 2px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hist-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--green);
+}
+
+.hist-count.miss {
+  color: var(--red);
+}
+
+.hist-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 12px;
+}
+
+.hist-entries li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+}
+
+.he-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--line-2);
+  color: var(--ink-2);
+}
+
+.he-ok .he-mark {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.he-miss .he-mark {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.he-meta {
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.print-report {
+  display: none;
+}
+
+@media print {
+  body.printing > :not(.print-report) {
+    display: none !important;
+  }
+
+  body.printing {
+    background: #fff;
+  }
+
+  body.printing .print-report {
+    display: block;
+    color: #000;
+    font: 11pt/1.4 system-ui, sans-serif;
+  }
+
+  .print-report h1 {
+    font-size: 16pt;
+  }
+
+  .print-report h2 {
+    margin-top: 14pt;
+    font-size: 13pt;
+  }
+
+  .print-report h3 {
+    margin-top: 8pt;
+    font-size: 11pt;
+    break-after: avoid;
+  }
+
+  .print-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-report th,
+  .print-report td {
+    padding: 3pt 6pt;
+    border-bottom: 0.5pt solid #999;
+    text-align: left;
+  }
+
+  .print-report section {
+    break-inside: avoid;
+  }
+
+  .print-report .he-mark {
+    background: none !important;
+    border: 0.5pt solid #000;
+    color: #000 !important;
+  }
+}
