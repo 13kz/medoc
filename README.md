@@ -81,22 +81,31 @@ Onglet Ordonnance de l’aidant, « Scanner une ordonnance » : photo (ou texte 
 
 La lecture de la posologie (`src/lib/prescription.ts`) est testée à part : « 1 cp matin et soir », « 2 fois par jour pendant 7 jours », « 1 sachet si douleur, maximum 3 par jour », « un jour sur deux », « toutes les 8 heures »…
 
-## Application mobile (Expo, EAS)
+## Application mobile native (React Native, Expo EAS)
 
-`mobile/` est une coque Expo : l’appli web du patient dans une WebView, et, autour, ce que seul le natif garantit.
+`mobile/` est une vraie appli React Native, Android et iOS, avec les trois profils. Au premier lancement : « Qui utilise ce téléphone ? » (je prends le traitement, j’accompagne un proche, je suis soignant), ou « J’ai un code d’invitation ».
 
-- **Rappels même appli fermée** : la page calcule les rappels des trois prochains jours (`src/lib/reminders.ts`), un à l’heure de chaque moment de prise et un second après le délai de retard, puis les envoie à la coque (message `schedule` de `src/lib/platform.ts`) à chaque changement d’ordonnance ou de prise. La coque les programme avec `expo-notifications` (60 au plus, limite d’iOS) ; ils sonnent téléphone verrouillé.
-- **Boutons dans la notification** : « J’ai pris » ouvre l’appli et coche les prises du rappel ; « Plus tard » reprogramme un rappel après le délai de report, sans ouvrir l’appli, et la page l’enregistre à sa prochaine ouverture (`src/lib/bridge.ts`).
-- Voix (`expo-speech`), vibration (`expo-haptics`) et notifications immédiates passent par le même pont.
+- **Code partagé** : Metro lit `src/lib` à la racine du dépôt (`mobile/metro.config.js`). Calcul des prises, réducteur, alertes, phrases lues, rappels et synchronisation sont les mêmes que pour le web et le serveur (`mobile/src/core.ts` liste ce qui est repris). Les icônes (`src/lib/icons.ts`) et l’API des dossiers (`src/lib/dossierApi.ts`) ont été sorties du code web pour être partagées.
+- **Patient** : écran « Maintenant » en très grand, « J’ai pris », « Plus tard » et annulation ; trois affichages choisis par l’aidant (voix d’abord, gros caractères jaune sur noir, standard avec le pilulier du jour) ; lecture à voix haute (`expo-speech`), vibration ; messages du médecin et changements de traitement à confirmer ; médicaments « si besoin ».
+- **Aidant** : navigation en forme de pilulier (une case par section, couvercle soulevé pour la section ouverte) ; Aujourd’hui (ruban des prises, retards, stock à racheter), Ordonnance (éditeur complet), Alertes, Réglages (affichage du patient, voix, délais, heures calmes, personnes à prévenir, partage).
+- **Médecin** : patients triés par observance avec leur semainier, fiche détaillée (oublis répétés, traitement), conseil envoyé au patient.
+- **Données** : le dossier est gardé sur le téléphone (`expo-sqlite/kv-store`) et migré au chargement. Sans partage, les trois profils travaillent sur le même dossier : on peut tous les essayer sur un seul téléphone (Profil > « Changer de profil »).
+- **Partage** : Réglages > Ce téléphone > « Partager ce dossier », puis « Inviter » donne un code à 8 caractères (copier ou envoyer). `SyncClient` tourne tel quel grâce à `expo/fetch` (flux SSE en streaming). L’adresse du serveur vient de `EXPO_PUBLIC_MEDOC_SERVER`, réglée par profil dans `mobile/eas.json`.
+- **Rappels** : le téléphone du patient programme les rappels des 3 prochains jours (`expo-notifications`, 60 au plus pour iOS), avec « J’ai pris » et « Plus tard » dans la notification. Le moteur d’alertes partagé tourne aussi sur l’appli, et l’aidant reçoit une notification quand une alerte arrive pendant que l’appli est ouverte.
 
 ```bash
 cd mobile
 npm install
-npm start                 # Expo Go ou client de développement
+npm start                 # client de développement (expo-dev-client)
 npm run typecheck
+eas build --profile development --platform all   # client de développement à installer
 eas build --profile preview --platform android   # APK à installer directement
 eas build --profile production --platform all    # Play Store et App Store
+eas submit --profile production
 ```
 
-L’adresse de l’appli web chargée vient de `EXPO_PUBLIC_MEDOC_URL`, réglée par profil dans `mobile/eas.json` (développement : la machine locale, `npm run dev -- --host`).
+Avant le premier build : `eas login`, puis `eas init` pour relier le projet à un compte Expo (ajoute `extra.eas.projectId` à `app.json`), et remplacer les adresses de serveur de `eas.json` par les vôtres.
 
+Aperçu dans un navigateur (développement seulement) : `npx expo install react-native-web react-dom @expo/metro-runtime` puis `npx expo start --web` ; `src/storage.web.ts` remplace alors SQLite par `localStorage`.
+
+Pas encore dans l’appli native : glycémie, photo de la boîte, scan d’ordonnance, réponse à la voix et push des proches téléphone fermé (le serveur envoie du Web Push, il faudra ajouter Expo Push).

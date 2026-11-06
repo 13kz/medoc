@@ -1,7 +1,7 @@
 {
   "name": "medoc-mobile",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -9,18 +9,25 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "build:preview": "eas build --profile preview --platform all",
-    "build:production": "eas build --profile production --platform all"
+    "build:production": "eas build --profile production --platform all",
+    "build:dev": "eas build --profile development --platform all"
   },
   "dependencies": {
+    "@expo-google-fonts/atkinson-hyperlegible": "^0.4.1",
     "expo": "~58.0.21",
+    "expo-clipboard": "~58.0.4",
+    "expo-dev-client": "~58.0.17",
+    "expo-font": "~58.0.11",
     "expo-haptics": "~58.0.7",
     "expo-notifications": "~58.1.7",
     "expo-speech": "~58.0.3",
+    "expo-splash-screen": "~58.0.12",
+    "expo-sqlite": "~58.0.14",
     "expo-status-bar": "~58.0.4",
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.10.1",
-    "react-native-webview": "14.0.1"
+    "react-native-svg": "^15.16.0"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",

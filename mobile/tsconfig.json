@@ -1,4 +1,10 @@
 {
   "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true }
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["ESNext", "DOM"],
+    "noUnusedLocals": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../src/lib/*.d.ts"],
+  "exclude": ["node_modules"]
 }

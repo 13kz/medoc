@@ -3,24 +3,48 @@
     "name": "Medoc",
     "slug": "medoc",
     "scheme": "medoc",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
-    "backgroundColor": "#000000",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0d1110",
     "ios": {
       "bundleIdentifier": "app.medoc",
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Medoc écoute « c’est pris » pour confirmer une prise à la voix.",
-        "NSSpeechRecognitionUsageDescription": "Medoc reconnaît « c’est pris » ou « plus tard » pour répondre sans toucher l’écran."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "app.medoc",
-      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#000000" },
-      "permissions": ["POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED", "VIBRATE", "RECORD_AUDIO"]
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1110"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
-    "plugins": [["expo-notifications", { "color": "#2f6b4f" }]]
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#2f6b4f"
+        }
+      ],
+      "expo-font",
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d1110",
+          "image": "./assets/icon.png",
+          "imageWidth": 160
+        }
+      ]
+    ]
   }
 }
