@@ -5,17 +5,21 @@ import type { IconName, Role } from './core'
 import { JoinSheet } from './JoinSheet'
 import { useSession } from './session'
 import { emptyState, exampleState, readLocalDossier, writeLocalDossier } from './store'
-import { C, ROLE_TONE } from './theme'
+import { C, ROLE_TONE, U } from './theme'
+import { Backdrop } from './ui/Backdrop'
 import { Icon } from './ui/Icon'
-import { Btn, Field, T, tap } from './ui/kit'
+import { Logo } from './ui/Reglette'
+import { Btn, Field, Kicker, T, tap } from './ui/kit'
 
-const ROLES: { role: Role; icon: IconName; title: string; desc: string }[] = [
-  { role: 'patient', icon: 'phone', title: 'Je prends le traitement', desc: 'Un seul écran : ce qu’il faut prendre maintenant, lu à voix haute.' },
-  { role: 'aidant', icon: 'heart', title: 'J’accompagne un proche', desc: 'Je saisis l’ordonnance, je suis les prises, je suis prévenu en cas d’oubli.' },
-  { role: 'medecin', icon: 'stethoscope', title: 'Je suis soignant', desc: 'Je suis l’observance de mes patients et je leur envoie des conseils.' },
+const u = U.nuit
+
+const ROLES: { role: Role; icon: IconName; who: string; title: string; desc: string }[] = [
+  { role: 'patient', icon: 'phone', who: 'La patiente', title: 'Je prends le traitement', desc: 'Une chose à la fois : ce qu’il faut prendre maintenant, lu à voix haute.' },
+  { role: 'aidant', icon: 'heart', who: 'Les proches', title: 'J’accompagne un proche', desc: 'Je ne reçois pas tout. Je reçois ce qui compte.' },
+  { role: 'medecin', icon: 'stethoscope', who: 'Le médecin', title: 'Je suis soignant', desc: 'Des faits, pas un journal : l’observance de la semaine en un coup d’œil.' },
 ]
 
-/** Premier lancement : « Qui utilise ce téléphone ? », puis le dossier de départ. */
+/** Premier lancement : « Un pilulier, trois regards », puis le dossier de départ. */
 export function Onboarding() {
   const { start, addLink } = useSession()
   const insets = useSafeAreaInsets()
@@ -33,96 +37,98 @@ export function Onboarding() {
   }
 
   return (
-    <ScrollView style={{ backgroundColor: C.night }} contentContainerStyle={{ padding: 20, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 40 }}>
-      <View style={s.brand} accessible accessibilityLabel="Medoc">
-        {(['#ffd43b', '#ff9f43', '#6cb4ff', '#b69cff'] as const).map((c, i) => (
-          <View key={c} style={[s.brandLid, { backgroundColor: c, transform: [{ translateY: i % 2 ? 6 : 0 }] }]} />
-        ))}
-        <T size="xxl" bold style={{ marginLeft: 12 }}>
-          medoc
-        </T>
-      </View>
+    <Backdrop u="nuit">
+      <ScrollView contentContainerStyle={{ padding: 22, paddingTop: insets.top + 26, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessible accessibilityLabel="Medoc">
+          <Logo size={26} />
+          <T size="lg" face="displayBold">
+            medoc
+          </T>
+        </View>
 
-      {!role ? (
-        <>
-          <T size="xl" bold style={{ marginTop: 28, marginBottom: 6 }} accessibilityRole="header">
-            Qui utilise ce téléphone ?
-          </T>
-          <T size="md" color={C.muted} style={{ marginBottom: 20 }}>
-            Chacun a son appli, pensée pour lui. On peut changer plus tard.
-          </T>
-          {ROLES.map((r) => (
-            <Pressable
-              key={r.role}
-              accessibilityRole="button"
-              accessibilityLabel={`${r.title}. ${r.desc}`}
-              onPress={() => {
-                tap()
-                setRole(r.role)
-              }}
-              style={({ pressed }) => [s.role, pressed && { transform: [{ scale: 0.98 }] }]}
-            >
-              <View style={[s.roleLid, { backgroundColor: ROLE_TONE[r.role] }]}>
-                <Icon name={r.icon} size={30} color={C.ink} stroke={2.4} />
-              </View>
-              <View style={{ flex: 1, padding: 18 }}>
-                <T size="lg" bold>
-                  {r.title}
-                </T>
-                <T size="sm" color={C.muted} style={{ marginTop: 4 }}>
-                  {r.desc}
-                </T>
-              </View>
-            </Pressable>
-          ))}
-          <Btn label="J’ai un code d’invitation" icon="key" variant="ghost" onPress={() => setJoining(true)} style={{ marginTop: 10 }} />
-        </>
-      ) : (
-        <>
-          <Pressable accessibilityRole="button" accessibilityLabel="Retour au choix du profil" onPress={() => setRole(null)} style={{ marginTop: 24, minHeight: 48, justifyContent: 'center' }}>
-            <T size="sm" bold color={C.muted}>
-              ‹ Changer de profil
+        {!role ? (
+          <>
+            <T size="giant" face="display" style={{ marginTop: 34 }} accessibilityRole="header">
+              Un pilulier,
             </T>
-          </Pressable>
-          <T size="xl" bold color={ROLE_TONE[role]} style={{ marginBottom: 16 }} accessibilityRole="header">
-            {ROLES.find((r) => r.role === role)!.title}
-          </T>
-          <Field
-            label={role === 'patient' ? 'Comment vous appeler ?' : role === 'aidant' ? 'Votre prénom' : 'Votre nom'}
-            value={name}
-            onChange={setName}
-            placeholder={role === 'patient' ? 'Ex. Mireille' : role === 'aidant' ? 'Ex. Karim' : 'Ex. Dr Martin'}
-            autoCap="words"
-          />
-          {role === 'aidant' && !existing && <Field label="Le prénom de votre proche, tel qu’il l’entendra" value={patientName} onChange={setPatientName} placeholder="Ex. Maman" autoCap="words" />}
+            <T size="giant" face="italic" color={C.peach} style={{ marginTop: -6 }}>
+              trois regards.
+            </T>
+            <T size="md" color={u.muted} style={{ marginTop: 14, marginBottom: 26 }}>
+              Qui utilise ce téléphone ? Chacun a son appli, pensée pour lui. On peut changer plus tard.
+            </T>
+            {ROLES.map((r) => (
+              <Pressable
+                key={r.role}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.title}. ${r.desc}`}
+                onPress={() => {
+                  tap()
+                  setRole(r.role)
+                }}
+                style={({ pressed }) => [s.role, pressed && { transform: [{ scale: 0.98 }] }]}
+              >
+                <View style={[s.lid, { backgroundColor: ROLE_TONE[r.role] }]}>
+                  <Icon name={r.icon} size={20} color={C.ink} stroke={2.4} />
+                  <T size="xs" face="black" color={C.ink} style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                    {r.who}
+                  </T>
+                </View>
+                <View style={{ padding: 18, paddingTop: 14 }}>
+                  <T size="xl" face="display">
+                    {r.title}
+                  </T>
+                  <T size="sm" face="italic" color={u.muted} style={{ marginTop: 6, fontSize: 18, lineHeight: 23 }}>
+                    {r.desc}
+                  </T>
+                </View>
+              </Pressable>
+            ))}
+            <Btn label="J’ai un code d’invitation" icon="key" variant="ghost" onPress={() => setJoining(true)} style={{ marginTop: 8 }} />
+          </>
+        ) : (
+          <>
+            <Pressable accessibilityRole="button" accessibilityLabel="Retour au choix du profil" onPress={() => setRole(null)} style={{ marginTop: 26, minHeight: 48, justifyContent: 'center' }}>
+              <Kicker>‹ Changer de profil</Kicker>
+            </Pressable>
+            <T size="xxl" face="display" style={{ marginBottom: 20 }} accessibilityRole="header">
+              {ROLES.find((r) => r.role === role)!.title}
+            </T>
+            <Field
+              label={role === 'patient' ? 'Comment vous appeler ?' : role === 'aidant' ? 'Votre prénom' : 'Votre nom'}
+              value={name}
+              onChange={setName}
+              placeholder={role === 'patient' ? 'Ex. Mireille' : role === 'aidant' ? 'Ex. Naz' : 'Ex. Dr Martin'}
+              autoCap="words"
+            />
+            {role === 'aidant' && !existing && <Field label="Le prénom de votre proche, tel qu’il l’entendra" value={patientName} onChange={setPatientName} placeholder="Ex. Maman" autoCap="words" />}
 
-          {role === 'medecin' ? (
-            <Btn label="Commencer" icon="chevron" size="lg" tone={ROLE_TONE.medecin} onPress={() => begin('keep')} />
-          ) : (
-            <View style={{ gap: 12 }}>
-              {existing && <Btn label={`Reprendre le dossier de ${existing.patient.name}`} icon="chevron" size="lg" tone={ROLE_TONE[role]} onPress={() => begin('keep')} />}
-              <Btn label="Commencer un dossier vide" icon="plus" size={existing ? 'md' : 'lg'} tone={existing ? C.paper : ROLE_TONE[role]} onPress={() => begin('empty')} />
-              <Btn label="Essayer avec une ordonnance d’exemple" icon="play" variant="ghost" onPress={() => begin('example')} />
-            </View>
-          )}
-        </>
-      )}
+            {role === 'medecin' ? (
+              <Btn label="Commencer" icon="chevron" size="lg" tone={ROLE_TONE.medecin} onPress={() => begin('keep')} />
+            ) : (
+              <View style={{ gap: 12 }}>
+                {existing && <Btn label={`Reprendre le dossier de ${existing.patient.name}`} icon="chevron" size="lg" tone={ROLE_TONE[role]} onPress={() => begin('keep')} />}
+                <Btn label="Commencer un dossier vide" icon="plus" size={existing ? 'md' : 'lg'} tone={existing ? C.porcelain : ROLE_TONE[role]} onPress={() => begin('empty')} />
+                <Btn label="Essayer avec l’ordonnance de Mireille" icon="play" variant="ghost" onPress={() => begin('example')} />
+              </View>
+            )}
+          </>
+        )}
 
-      <JoinSheet
-        visible={joining}
-        onClose={() => setJoining(false)}
-        onJoined={(l) => {
-          setJoining(false)
-          addLink(l)
-        }}
-      />
-    </ScrollView>
+        <JoinSheet
+          visible={joining}
+          onClose={() => setJoining(false)}
+          onJoined={(l) => {
+            setJoining(false)
+            addLink(l)
+          }}
+        />
+      </ScrollView>
+    </Backdrop>
   )
 }
 
 const s = StyleSheet.create({
-  brand: { flexDirection: 'row', alignItems: 'center' },
-  brandLid: { width: 18, height: 30, borderRadius: 6, marginRight: 4 },
-  role: { flexDirection: 'row', backgroundColor: C.night2, borderRadius: 26, marginBottom: 14, overflow: 'hidden', borderWidth: 1, borderColor: C.line, minHeight: 110 },
-  roleLid: { width: 72, alignItems: 'center', justifyContent: 'center' },
+  role: { backgroundColor: C.night2, borderRadius: 26, marginBottom: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,241,234,0.1)' },
+  lid: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 10 },
 })

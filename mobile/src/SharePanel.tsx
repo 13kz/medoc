@@ -5,7 +5,7 @@ import { fetch as expoFetch } from 'expo/fetch'
 import { createDossier, formatCode, invite, listMembers, revokeMember, ROLE_LABEL, type Member, type PendingInvitation, type Role } from './core'
 import { SERVER_URL, useSession } from './session'
 import { useStore } from './store'
-import { C, ROLE_TONE } from './theme'
+import { C, ROLE_TONE, useU } from './theme'
 import { Btn, Card, Field, IconBtn, Label, T } from './ui/kit'
 
 const f = expoFetch as unknown as typeof fetch
@@ -15,6 +15,7 @@ const f = expoFetch as unknown as typeof fetch
  * Le premier appareil envoie son dossier au serveur ; les autres le rejoignent avec un code.
  */
 export function SharePanel() {
+  const u = useU()
   const { session, link, addLink } = useSession()
   const { state, sync } = useStore()
   const [busy, setBusy] = useState(false)
@@ -38,7 +39,7 @@ export function SharePanel() {
 
   if (!SERVER_URL)
     return (
-      <T size="sm" color={C.muted}>
+      <T size="sm" color={u.muted}>
         Le partage entre téléphones n’est pas activé dans cette version (aucun serveur configuré dans eas.json).
       </T>
     )
@@ -59,12 +60,12 @@ export function SharePanel() {
   if (!link)
     return (
       <View>
-        <T size="md" color={C.muted} style={{ marginBottom: 12 }}>
+        <T size="md" color={u.muted} style={{ marginBottom: 12 }}>
           Le dossier de {state.patient.name} est pour l’instant sur ce téléphone seulement. Partagez-le pour que le patient, les proches et le médecin voient les mêmes prises.
         </T>
         <Btn label={busy ? 'Envoi…' : 'Partager ce dossier'} icon="cloud" disabled={busy} onPress={() => run(async () => addLink(await createDossier(SERVER_URL, state, session.role as 'patient' | 'aidant', session.name, f)))} />
         {!!error && (
-          <T size="sm" color={C.late} style={{ marginTop: 8 }}>
+          <T size="sm" color={C.alert} style={{ marginTop: 8 }}>
             {error}
           </T>
         )}
@@ -82,19 +83,19 @@ export function SharePanel() {
 
   return (
     <View>
-      <T size="sm" color={sync?.online ? C.taken : C.muted} style={{ marginBottom: 10 }} accessibilityLiveRegion="polite">
+      <T size="sm" color={sync?.online ? C.mint : u.muted} style={{ marginBottom: 10 }} accessibilityLiveRegion="polite">
         {sync?.online ? 'Dossier partagé, à jour' : 'Dossier partagé, hors ligne'}
         {sync && sync.pending > 0 ? ` · ${sync.pending} geste${sync.pending > 1 ? 's' : ''} en attente` : ''}
       </T>
       {code ? (
         <Card tone={ROLE_TONE[code.role]}>
-          <T size="sm" color={C.muted}>
+          <T size="sm" color={u.muted}>
             Code pour {code.name} ({ROLE_LABEL[code.role].toLowerCase()}), valable 48 h, une seule fois
           </T>
           <T size="xxl" bold selectable style={{ letterSpacing: 4, marginVertical: 8 }} accessibilityLabel={`Code : ${code.code.split('').join(' ')}`}>
             {formatCode(code.code)}
           </T>
-          <T size="sm" color={C.muted} style={{ marginBottom: 12 }}>
+          <T size="sm" color={u.muted} style={{ marginBottom: 12 }}>
             Sur l’autre téléphone : installer Medoc, puis « J’ai un code d’invitation ».
           </T>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -114,17 +115,17 @@ export function SharePanel() {
         </>
       )}
       {!!error && (
-        <T size="sm" color={C.late} style={{ marginTop: 8 }}>
+        <T size="sm" color={C.alert} style={{ marginTop: 8 }}>
           {error}
         </T>
       )}
       <Label>Qui a accès au dossier</Label>
       {members.map((m) => (
-        <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 56, borderBottomWidth: 1, borderBottomColor: C.line }}>
+        <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 56, borderBottomWidth: 1, borderBottomColor: u.line }}>
           <View style={{ width: 10, height: 32, borderRadius: 4, backgroundColor: ROLE_TONE[m.role], marginRight: 12 }} />
           <View style={{ flex: 1 }}>
             <T size="md">{m.id === link.memberId ? `${m.name} (ce téléphone)` : m.name}</T>
-            <T size="xs" color={C.muted}>
+            <T size="xs" color={u.muted}>
               {ROLE_LABEL[m.role]}
             </T>
           </View>
@@ -132,7 +133,7 @@ export function SharePanel() {
         </View>
       ))}
       {pending.map((p, i) => (
-        <T key={i} size="sm" color={C.muted} style={{ paddingVertical: 8 }}>
+        <T key={i} size="sm" color={u.muted} style={{ paddingVertical: 8 }}>
           Invitation en attente : {p.name} ({ROLE_LABEL[p.role].toLowerCase()})
         </T>
       ))}

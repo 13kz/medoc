@@ -3,7 +3,7 @@ import { Alert, Pressable, View } from 'react-native'
 import { FORMS, type MedForm, type Medication } from '../core'
 import { useSession } from '../session'
 import { useStore } from '../store'
-import { C, lid } from '../theme'
+import { C, lid, useU } from '../theme'
 import { Pill } from '../ui/Pill'
 import { Btn, Choice, Field, Label, T, Toggle, tap } from '../ui/kit'
 import { Sheet } from '../ui/Sheet'
@@ -30,6 +30,7 @@ export const blankMed = (): Medication => ({ id: `med-${Date.now().toString(36)}
 
 /** Ajouter ou modifier un médicament de l'ordonnance. Chaque changement entre au journal du traitement. */
 export function MedEditor({ med, onClose }: { med: Medication | null; onClose: () => void }) {
+  const u = useU()
   const { dispatch, now, state } = useStore()
   const { session } = useSession()
   const [m, setM] = useState<Medication>(() => med ?? blankMed())
@@ -77,7 +78,7 @@ export function MedEditor({ med, onClose }: { med: Medication | null; onClose: (
               tap()
               set({ color: c })
             }}
-            style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c, borderWidth: m.color === c ? 4 : 1, borderColor: m.color === c ? C.taken : C.line }}
+            style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c, borderWidth: m.color === c ? 4 : 1, borderColor: m.color === c ? C.mint : u.line }}
           />
         ))}
       </View>
@@ -109,9 +110,9 @@ export function MedEditor({ med, onClose }: { med: Medication | null; onClose: (
                     tap()
                     toggleTime(t)
                   }}
-                  style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 14, justifyContent: 'center', borderWidth: 2, borderColor: p?.tone ?? C.paper, backgroundColor: on ? p?.tone ?? C.paper : 'transparent' }}
+                  style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 14, justifyContent: 'center', borderWidth: 2, borderColor: p?.tone ?? u.accent, backgroundColor: on ? p?.tone ?? u.accent : 'transparent' }}
                 >
-                  <T size="sm" bold color={on ? C.ink : C.text}>
+                  <T size="sm" bold color={on ? C.ink : u.fg}>
                     {p?.label ?? t.replace(':', ' h ')}
                   </T>
                 </Pressable>
@@ -147,9 +148,9 @@ export function MedEditor({ med, onClose }: { med: Medication | null; onClose: (
                     tap()
                     toggleDay(JS_DAY[i])
                   }}
-                  style={{ flex: 1, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.paper : C.night3 }}
+                  style={{ flex: 1, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? u.accent : u.field }}
                 >
-                  <T size="md" bold color={on ? C.ink : C.muted}>
+                  <T size="md" bold color={on ? C.ink : u.muted}>
                     {d}
                   </T>
                 </Pressable>
@@ -172,7 +173,7 @@ export function MedEditor({ med, onClose }: { med: Medication | null; onClose: (
         </View>
       )}
       {!isNew && <Toggle label="En cours" desc="Désactivé : le traitement est suspendu, sans perdre la fiche." value={m.active} onChange={(active) => set({ active })} />}
-      <Btn label="Enregistrer" icon="check" size="lg" tone={C.taken} onPress={save} disabled={!valid} style={{ marginTop: 20 }} />
+      <Btn label="Enregistrer" icon="check" size="lg" tone={C.mint} onPress={save} disabled={!valid} style={{ marginTop: 20 }} />
       {!isNew && <Btn label="Supprimer" icon="trash" variant="ghost" onPress={remove} style={{ marginTop: 10 }} />}
     </Sheet>
   )

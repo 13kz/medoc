@@ -5,7 +5,7 @@ import { ProfileSheet } from '../ProfileSheet'
 import { useSession } from '../session'
 import { speak } from '../speech'
 import { useStore } from '../store'
-import { C, lid } from '../theme'
+import { C, lid, useU } from '../theme'
 import { Icon } from '../ui/Icon'
 import { Screen } from '../ui/Screen'
 import { Btn, Choice, Field, IconBtn, Label, Stepper, T, Toggle, tap } from '../ui/kit'
@@ -22,6 +22,7 @@ const ROLES: { value: ContactRole; label: string }[] = [
 ]
 
 export function SettingsTab() {
+  const u = useU()
   const { state, dispatch, now } = useStore()
   const { session } = useSession()
   const { patient, settings } = state
@@ -30,7 +31,7 @@ export function SettingsTab() {
   const [role, setRole] = useState<ContactRole>('famille')
 
   return (
-    <Screen title="Réglages" now={now} tone={lid('nuit')} right={<IconBtn icon="user" label="Ce téléphone et partage" onPress={() => setProfile(true)} />}>
+    <Screen title="Réglages" italic={`du téléphone de ${patient.name}`} accent={C.peach} now={now} right={<IconBtn icon="user" label="Ce téléphone et partage" onPress={() => setProfile(true)} />}>
       <Label>Le téléphone de {patient.name}</Label>
       <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="Affichage du patient">
         {MODES.map((m) => {
@@ -45,16 +46,16 @@ export function SettingsTab() {
                 tap()
                 dispatch({ type: 'patient', patch: { displayMode: m.id } })
               }}
-              style={{ flexDirection: 'row', gap: 14, alignItems: 'center', padding: 16, borderRadius: 22, borderWidth: 2, borderColor: on ? lid('nuit') : C.line, backgroundColor: on ? C.night3 : C.night2 }}
+              style={{ flexDirection: 'row', gap: 14, alignItems: 'center', padding: 16, borderRadius: 22, borderWidth: 2, borderColor: on ? lid('nuit') : u.line, backgroundColor: on ? u.field : u.card }}
             >
-              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: on ? lid('nuit') : C.night3, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={m.icon} size={28} color={on ? C.ink : C.text} />
+              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: on ? lid('nuit') : u.field, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={m.icon} size={28} color={on ? C.ink : u.fg} />
               </View>
               <View style={{ flex: 1 }}>
                 <T size="md" bold>
                   {m.title}
                 </T>
-                <T size="sm" color={C.muted}>
+                <T size="sm" color={u.muted}>
                   {m.desc}
                 </T>
               </View>

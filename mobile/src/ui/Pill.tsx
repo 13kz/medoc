@@ -5,7 +5,7 @@ import type { Medication } from '../core'
 const INK = '#1b2420'
 
 /** Le médicament dessiné dans sa forme et sa couleur réelles (ou la photo de sa boîte). */
-export function Pill({ med, size = 48, photo = false, bg = '#f4eee2' }: { med: Medication; size?: number; photo?: boolean; bg?: string }) {
+export function Pill({ med, size = 48, photo = false, bg = '#ffffff' }: { med: Medication; size?: number; photo?: boolean; bg?: string }) {
   const box = { width: size, height: size, borderRadius: size / 3, backgroundColor: bg, alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const }
   if (photo && med.photo) {
     return (

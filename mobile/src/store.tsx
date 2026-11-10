@@ -3,7 +3,9 @@ import { ActivityIndicator, AppState as RNAppState, View } from 'react-native'
 import { fetch as expoFetch } from 'expo/fetch'
 import { parseStored, reducer, seedState, simulatedNow, SyncClient, type Action, type AppState, type Link, type SyncStatus } from './core'
 import { kv } from './storage'
-import { C } from './theme'
+import { U } from './theme'
+
+const u = U.nuit
 import { Btn, T } from './ui/kit'
 
 const STORAGE_KEY = 'medoc:v1'
@@ -115,7 +117,7 @@ export function DossierProvider({ link, children, onRefused }: { link: Link | nu
   if (!loaded) {
     const refused = sync && sync.access !== 'ok'
     return (
-      <View style={{ flex: 1, backgroundColor: C.night, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
+      <View style={{ flex: 1, backgroundColor: u.bg, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
         {refused ? (
           <>
             <T size="lg" bold style={{ textAlign: 'center' }}>
@@ -125,8 +127,8 @@ export function DossierProvider({ link, children, onRefused }: { link: Link | nu
           </>
         ) : (
           <>
-            <ActivityIndicator size="large" color={C.paper} />
-            <T size="md" color={C.muted}>
+            <ActivityIndicator size="large" color={u.accent} />
+            <T size="md" color={u.muted}>
               Chargement du dossier…
             </T>
           </>

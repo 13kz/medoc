@@ -13,7 +13,8 @@
     "build:dev": "eas build --profile development --platform all"
   },
   "dependencies": {
-    "@expo-google-fonts/atkinson-hyperlegible": "^0.4.1",
+    "@expo-google-fonts/atkinson-hyperlegible-next": "^0.4.1",
+    "@expo-google-fonts/fraunces": "^0.4.1",
     "expo": "~58.0.21",
     "expo-clipboard": "~58.0.4",
     "expo-dev-client": "~58.0.17",
