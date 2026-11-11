@@ -1,19 +1,33 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
+      "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_MEDOC_URL": "http://192.168.1.10:5173/patient" }
+      "env": {
+        "EXPO_PUBLIC_MEDOC_SERVER": "http://192.168.1.10:8787"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_MEDOC_URL": "https://preview.medoc.app/patient" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_MEDOC_SERVER": "https://preview.medoc.app"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_MEDOC_URL": "https://medoc.app/patient" }
+      "env": {
+        "EXPO_PUBLIC_MEDOC_SERVER": "https://medoc.app"
+      }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }

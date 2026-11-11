@@ -1,5 +1,7 @@
+import type { Role } from './dossierApi'
+
 /** Rôle de l'appli installée : `/patient`, `/aidant`, `/medecin` (ou `#/patient` dans une page autonome). */
-export type Role = 'patient' | 'aidant' | 'medecin'
+export type { Role }
 
 export function roleFromLocation(loc: Pick<Location, 'pathname' | 'hash'> = location): Role | null {
   const m = loc.pathname.match(/\/(patient|aidant|medecin)\/?$/) ?? loc.hash.match(/^#\/(patient|aidant|medecin)\b/)

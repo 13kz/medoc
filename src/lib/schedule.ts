@@ -1,4 +1,4 @@
-import type { IconName } from '../components/Icon'
+import type { IconName } from './icons'
 import type { AppState, Dose, MedForm, Medication } from './types'
 
 export const pad = (n: number) => String(n).padStart(2, '0')

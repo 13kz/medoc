@@ -1,13 +1,14 @@
 import { Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 
-/**
- * Rappels de prise programmés sur le téléphone. La page web calcule la liste (`src/lib/reminders.ts`)
- * et l'envoie à chaque changement ; ici on la remplace telle quelle.
- */
-export type Reminder = { id: string; at: number; title: string; body: string; doseKeys: string[]; snoozeMin: number }
+import type { Reminder } from './core'
 
-/** Réponse à une notification, transmise à la page (`src/lib/bridge.ts`). */
+/**
+ * Rappels de prise programmés sur le téléphone, pour qu'ils sonnent appli fermée et téléphone
+ * verrouillé. La liste vient du code partagé (`src/lib/reminders.ts`) ; ici on la remplace telle quelle.
+ */
+
+/** Réponse à un bouton de notification, à appliquer au dossier. */
 export type FromNative = { type: 'take'; doseKeys: string[]; at: number } | { type: 'snooze'; doseKeys: string[]; until: number }
 
 const CATEGORY = 'prise'
@@ -20,7 +21,7 @@ export async function prepareNotifications(): Promise<void> {
     handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
   })
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
-    // « J'ai pris » ouvre l'appli : la page coche la prise et l'annonce, c'est le chemin le plus sûr.
+    // « J'ai pris » ouvre l'appli : elle coche la prise et l'annonce, c'est le chemin le plus sûr.
     { identifier: 'take', buttonTitle: 'J’ai pris', options: { opensAppToForeground: true } },
     { identifier: 'snooze', buttonTitle: 'Plus tard', options: { opensAppToForeground: false } },
   ])
@@ -69,7 +70,7 @@ export const notifyNow = (title: string, body: string) =>
 
 /**
  * Traite le bouton touché. « Plus tard » est géré ici même appli fermée : un nouveau rappel est
- * programmé ; la page en est informée à sa prochaine ouverture.
+ * programmé ; le dossier enregistre le report à la prochaine ouverture.
  */
 export async function handleResponse(r: Notifications.NotificationResponse): Promise<FromNative | null> {
   const { content, identifier } = r.notification.request
