@@ -17,6 +17,10 @@ Le fil conducteur visuel est le pilulier : chaque moment de la journée a la cou
 
 L’ordonnance fournie est fictive. Les données restent dans le navigateur (`localStorage`) ; deux onglets ouverts se synchronisent entre eux.
 
+## Site vitrine
+
+`site/` contient le site de présentation en Next.js, avec un pilulier en 3D et le prototype des trois rôles relié à la même logique que l'appli. Voir [site/README.md](site/README.md).
+
 ## Lancer
 
 ```bash
